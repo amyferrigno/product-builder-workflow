@@ -1,0 +1,31 @@
+queries:
+  - id: ticket_share_by_category
+    provider: mock_warehouse
+    file: ticket_share_by_category.sql
+    description: Share of support tickets in one category for a period
+    metric: ticket_share
+    metric_definition: Tickets in the category divided by all tickets created in the period (fraction 0 to 1)
+    params: [category, period_start, period_end]
+    value_field: share
+    n_field: total_tickets
+    status: reviewed
+  - id: median_minutes_to_confirm
+    provider: mock_warehouse
+    file: median_minutes_to_confirm.sql
+    description: Median minutes to confirm a completed meeting for one segment
+    metric: median_minutes_to_confirm
+    metric_definition: Median of minutes_to_confirm over completed scheduling events of accounts in the segment
+    params: [segment]
+    value_field: median_minutes
+    n_field: n_meetings
+    status: reviewed
+  - id: avg_messages_per_meeting
+    provider: mock_warehouse
+    file: avg_messages_per_meeting.sql
+    description: Average messages exchanged per completed meeting for one segment
+    metric: avg_messages_per_meeting
+    metric_definition: Mean of messages_exchanged over completed scheduling events of accounts in the segment
+    params: [segment]
+    value_field: avg_messages
+    n_field: n_meetings
+    status: reviewed

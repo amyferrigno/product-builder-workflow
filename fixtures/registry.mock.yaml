@@ -1,0 +1,13 @@
+providers:
+  - id: mock_warehouse
+    kind: script
+    enabled: true
+    command: "python connectors/providers/mock_warehouse.py"
+    capabilities:
+      - sql_readonly
+  - id: mock_anecdotes
+    kind: script
+    enabled: true
+    command: "python connectors/providers/mock_anecdotes.py"
+    capabilities:
+      - anecdotes

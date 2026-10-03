@@ -209,6 +209,50 @@ def load_anecdote_ids(run_dir: Path) -> Set[str]:
     return anecdote_ids
 
 
+def load_anecdote_quotes(run_dir: Path) -> List[str]:
+    """Load the quote text of every record in 04-anecdotes.json."""
+    anecdotes_file = run_dir / "04-anecdotes.json"
+    if not anecdotes_file.exists():
+        return []
+    try:
+        data = load_json_file(anecdotes_file)
+    except (FileNotFoundError, ValueError):
+        return []
+    if isinstance(data, dict):
+        data = data.get("anecdotes", [])
+    if not isinstance(data, list):
+        return []
+    return [r["quote"] for r in data if isinstance(r, dict) and isinstance(r.get("quote"), str)]
+
+
+def extraction_item_texts(extraction: dict) -> List[str]:
+    """Collect the text of every item in the extraction lists."""
+    texts = []
+    if isinstance(extraction, dict):
+        for value in extraction.values():
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict) and isinstance(item.get("text"), str):
+                        texts.append(item["text"])
+    return texts
+
+
+QUOTED_RE = re.compile(r'"([^"]+)"|\u201c([^\u201d]+)\u201d')
+
+
+def find_unsupported_quotes(section_6b: str, sources: List[str]) -> List[str]:
+    """Return quoted passages of 4 or more words that are not a substring of any source text."""
+    normalised_sources = [" ".join(t.split()) for t in sources]
+    unsupported = []
+    for match in QUOTED_RE.finditer(section_6b):
+        quoted = " ".join((match.group(1) or match.group(2)).split())
+        if len(quoted.split()) < 4:
+            continue
+        if not any(quoted in source for source in normalised_sources):
+            unsupported.append(quoted)
+    return unsupported
+
+
 def remove_html_comments(text: str) -> str:
     """Remove HTML comments from text."""
     return re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
@@ -738,6 +782,22 @@ def validate_prd(run_dir: str) -> Tuple[bool, List[str]]:
         for display, value in traceable_numbers(remove_html_comments(section_text), run_id_literals):
             if value not in supported_numbers:
                 errors.append(f"Unsupported number '{display}' in section {section_num}")
+
+    # === Rule k: Quotes in section 6b must come from an anecdote record or an extraction item ===
+    section_6_text = find_section_content(prd_text, 6)
+    if section_6_text:
+        section_6b_lines = []
+        in_6b = False
+        for line in remove_html_comments(section_6_text).split('\n'):
+            if line.startswith('### 6b.'):
+                in_6b = True
+            elif line.startswith('###'):
+                in_6b = False
+            if in_6b:
+                section_6b_lines.append(line)
+        sources = load_anecdote_quotes(run_path) + extraction_item_texts(extraction or {})
+        for quoted in find_unsupported_quotes('\n'.join(section_6b_lines), sources):
+            errors.append(f'Unsupported quote in section 6b: "{quoted[:40]}..."')
 
     return len(errors) == 0, errors
 

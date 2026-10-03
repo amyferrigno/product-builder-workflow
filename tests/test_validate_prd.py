@@ -1093,3 +1093,50 @@ def test_cited_requirement_without_row_fails():
     assert code != 0
     assert "Requirement REQ-777 is cited but has no row in section 12" in stdout
 
+
+
+# --- Quotes in section 6b must be supported ---
+def _with_6b_text(text: str) -> str:
+    return VALID_PRD_BASE.replace(
+        "Customer feedback from interviews supports the problem.",
+        f"Customer feedback from interviews supports the problem. {text}",
+    )
+
+
+def test_6b_quote_from_anecdote_record_passes():
+    prd = _with_6b_text('One admin said "I spend too much time on scheduling" (AN-001).')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_6b_curly_quote_from_anecdote_record_passes():
+    prd = _with_6b_text("One admin said “spend too much time on” (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_6b_quote_from_extraction_item_passes():
+    extraction = make_extraction()
+    extraction["problems"][0]["text"] = "Admins said booking takes far too long every week"
+    prd = _with_6b_text('In the meeting: "booking takes far too long" (P-1).')
+    code, stdout, _ = _validate_variant(prd, extraction)
+    assert code == 0, stdout
+
+
+def test_6b_invented_quote_fails():
+    prd = _with_6b_text('A customer said "this tool ruined my entire week" (AN-001).')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert 'Unsupported quote in section 6b: "this tool ruined my entire week..."' in stdout
+
+
+def test_6b_short_quoted_phrase_is_ignored():
+    prd = _with_6b_text('They called it "far too slow" (AN-001).')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_quote_outside_section_6b_is_not_checked():
+    prd = VALID_PRD_BASE.replace("Strategic context and timing.", 'Strategic context and "a long invented phrase here".')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout

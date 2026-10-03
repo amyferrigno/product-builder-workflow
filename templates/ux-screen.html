@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SCR-001 Screen name</title>
+<style>
+/* TOKENS: replace this comment with the exact content of templates/ux-tokens.css (or the configured tokens file). */
+/* Screen styles go after the tokens block. Use var(--...) only: no hex, rgb( or hsl( colours. */
+body { font-family: var(--font-family); color: var(--color-text); background: var(--color-bg); }
+button, a.button { min-height: var(--touch-target-min); }
+</style>
+</head>
+<body>
+<nav aria-label="States">
+  <a href="#state-default">default</a>
+  <a href="#state-loading">loading</a>
+  <a href="#state-empty">empty</a>
+  <a href="#state-error">error</a>
+  <a href="#state-success">success</a>
+  <!-- AI features also: low-confidence, user-edit, regenerate, explanation, escalation -->
+</nav>
+<main data-screen="SCR-001">
+  <section id="state-default" data-state="default">
+    <h1>Screen name</h1>
+    <p>Default content.</p>
+  </section>
+  <section id="state-loading" data-state="loading"><p>Loading...</p></section>
+  <section id="state-empty" data-state="empty"><p>Nothing here yet.</p></section>
+  <section id="state-error" data-state="error"><p>Something went wrong. Try again.</p></section>
+  <section id="state-success" data-state="success"><p>Done.</p></section>
+</main>
+</body>
+</html>

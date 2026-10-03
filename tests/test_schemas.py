@@ -26,6 +26,7 @@ def test_all_schemas_are_valid():
         "pm-config",
         "registry",
         "extraction",
+        "problem",
         "evidence",
         "anecdote",
         "provider-io",

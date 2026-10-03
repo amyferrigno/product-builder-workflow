@@ -1,0 +1,93 @@
+{
+  "run_id": "2026-01-15-contradictory-decisions",
+  "attendee_roles": ["PM", "Product Marketing Lead", "Sales Lead"],
+  "problems": [
+    {
+      "id": "P-1",
+      "text": "Users want better ways to find past meetings",
+      "source_lines": [8],
+      "type": "stated"
+    }
+  ],
+  "proposed_solutions": [
+    {
+      "id": "S-1",
+      "text": "A search feature for past meetings",
+      "source_lines": [8],
+      "type": "stated"
+    },
+    {
+      "id": "S-2",
+      "text": "Launch search for Enterprise only first, to keep it simple and give a reason to upgrade",
+      "source_lines": [12],
+      "type": "stated"
+    }
+  ],
+  "user_segments": [
+    {
+      "id": "U-1",
+      "text": "A large prospect that uses Standard and Enterprise plans depending on the department",
+      "source_lines": [10],
+      "type": "stated"
+    }
+  ],
+  "requests": [
+    {
+      "id": "R-1",
+      "text": "A large prospect specifically asked for search",
+      "source_lines": [10],
+      "type": "stated"
+    },
+    {
+      "id": "R-2",
+      "text": "Search on all plan levels, which the Sales Lead says was promised to the prospect",
+      "source_lines": [10, 16],
+      "type": "stated"
+    },
+    {
+      "id": "R-3",
+      "text": "Position search as an Enterprise differentiator to help the pricing story",
+      "source_lines": [14],
+      "type": "stated"
+    }
+  ],
+  "decisions": [],
+  "disagreements": [
+    {
+      "id": "DIS-1",
+      "text": "The Sales Lead wants search on all plans because of the promise to the prospect. The PM proposed Enterprise only first, and the Product Marketing Lead says putting search on all plans loses upsell momentum.",
+      "source_lines": [12, 16, 22, 24],
+      "type": "stated"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q-1",
+      "text": "Which plan levels get search at launch: all plans or Enterprise only? The PM is not committing to either and wants leadership to decide.",
+      "source_lines": [24, 30],
+      "type": "stated"
+    }
+  ],
+  "action_items": [
+    {
+      "id": "A-1",
+      "text": "Document the conflict and get leadership to decide",
+      "source_lines": [30],
+      "type": "stated"
+    }
+  ],
+  "metrics_mentioned": [
+    {
+      "id": "M-1",
+      "text": "The deal with the large prospect is worth $200K annually",
+      "source_lines": [26],
+      "type": "stated"
+    },
+    {
+      "id": "M-2",
+      "text": "The prospect needs an answer by end of week",
+      "source_lines": [32],
+      "type": "stated"
+    }
+  ]
+}

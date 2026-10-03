@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Problem Schema (M1 Front Matter)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "problems", "primary_problem", "parked_problems", "ai"],
+  "if": {
+    "properties": {
+      "ai": {
+        "properties": {
+          "proposed": {
+            "const": true
+          }
+        },
+        "required": ["proposed"]
+      }
+    },
+    "required": ["ai"]
+  },
+  "then": {
+    "properties": {
+      "ai": {
+        "required": ["proposed", "gates", "pattern", "red_flags", "verdict"]
+      }
+    }
+  },
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "problems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "validation_status", "missing_evidence", "source_items", "reframed_from_solution"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^PB-[0-9]+$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "validation_status": {
+            "type": "string",
+            "enum": ["VALIDATED", "UNVALIDATED"]
+          },
+          "missing_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reframed_from_solution": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "primary_problem": {
+      "type": "string",
+      "pattern": "^PB-[0-9]+$"
+    },
+    "parked_problems": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^PB-[0-9]+$"
+      }
+    },
+    "ai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposed"],
+      "properties": {
+        "proposed": {
+          "type": "boolean"
+        },
+        "gates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["1", "2", "3", "4", "5"],
+          "properties": {
+            "1": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["result"],
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "unknown"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "2": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["result"],
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "unknown"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "3": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["result"],
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "unknown"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "4": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["result"],
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "unknown"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "5": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["result"],
+              "properties": {
+                "result": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "unknown"]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "pattern": {
+          "type": "string",
+          "enum": [
+            "recognition_at_scale",
+            "personalization_beyond_rules",
+            "nlu_nlg",
+            "prediction_under_uncertainty",
+            "creative_augmentation",
+            "judgment_workflow_automation",
+            "none"
+          ]
+        },
+        "red_flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "known_finite_rules",
+              "insufficient_data",
+              "catastrophic_errors",
+              "explainability_required",
+              "ux_problem_in_disguise",
+              "commodity_tool_rebuild"
+            ]
+          }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["AI_JUSTIFIED", "AI_NOT_JUSTIFIED", "NEEDS_DATA"]
+        }
+      }
+    }
+  }
+}

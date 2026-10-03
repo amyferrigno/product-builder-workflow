@@ -1,0 +1,140 @@
+{
+  "run_id": "2026-01-15-clean-meeting",
+  "attendee_roles": ["PM", "Engineer Lead", "Support Lead"],
+  "problems": [
+    {
+      "id": "P-1",
+      "text": "Finding meeting time is slow and fragmented",
+      "source_lines": [18],
+      "type": "stated"
+    },
+    {
+      "id": "P-2",
+      "text": "Customers check multiple calendars and send back-and-forth emails to find a time",
+      "source_lines": [10],
+      "type": "stated"
+    },
+    {
+      "id": "P-3",
+      "text": "Copy-paste calendar links do not auto-update if the host's availability changes",
+      "source_lines": [20],
+      "type": "stated"
+    }
+  ],
+  "proposed_solutions": [
+    {
+      "id": "S-1",
+      "text": "Integrate with the Google and Outlook calendar APIs and show available time",
+      "source_lines": [30],
+      "type": "stated"
+    }
+  ],
+  "user_segments": [
+    {
+      "id": "U-1",
+      "text": "Customers whose setups differ: some use Google Calendar, some Outlook, some both",
+      "source_lines": [22],
+      "type": "stated"
+    },
+    {
+      "id": "U-2",
+      "text": "Enterprise accounts, whose IT must approve calendar integrations",
+      "source_lines": [36],
+      "type": "stated"
+    }
+  ],
+  "requests": [
+    {
+      "id": "R-1",
+      "text": "A large deal that has not signed yet said \"make scheduling frictionless or we're going elsewhere\"",
+      "source_lines": [26],
+      "type": "stated"
+    },
+    {
+      "id": "R-2",
+      "text": "Requirements should call out that enterprise accounts need IT approval for calendar integrations",
+      "source_lines": [36],
+      "type": "stated"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-1",
+      "text": "Scope this for the Q4 roadmap",
+      "source_lines": [34],
+      "type": "stated"
+    },
+    {
+      "id": "D-2",
+      "text": "Keep this in scope for scheduling, not calendar sync or other integrations",
+      "source_lines": [38],
+      "type": "stated"
+    },
+    {
+      "id": "D-3",
+      "text": "Prototype one flow next sprint to de-risk the API work",
+      "source_lines": [40],
+      "type": "stated"
+    }
+  ],
+  "disagreements": [],
+  "open_questions": [],
+  "action_items": [
+    {
+      "id": "A-1",
+      "text": "PM to add this to the strategy doc this week",
+      "source_lines": [34],
+      "type": "stated"
+    },
+    {
+      "id": "A-2",
+      "text": "PM to capture the enterprise IT approval point in the requirements",
+      "source_lines": [36, 38],
+      "type": "stated"
+    }
+  ],
+  "metrics_mentioned": [
+    {
+      "id": "M-1",
+      "text": "200 support tickets analysed from Q3; 45 of them (about 22%) were complaints about how long it takes to find a time",
+      "source_lines": [10],
+      "type": "stated"
+    },
+    {
+      "id": "M-2",
+      "text": "Customers say they spend 20+ minutes per meeting",
+      "source_lines": [10],
+      "type": "stated"
+    },
+    {
+      "id": "M-3",
+      "text": "3-4 back-and-forth messages per scheduled meeting, seen in the logs",
+      "source_lines": [12],
+      "type": "stated"
+    },
+    {
+      "id": "M-4",
+      "text": "Five customer interviews last month; all five said they waste time on calendar hunting",
+      "source_lines": [16],
+      "type": "stated"
+    },
+    {
+      "id": "M-5",
+      "text": "Three of the five interviewed customers said they are looking at competitors for this feature",
+      "source_lines": [16],
+      "type": "stated"
+    },
+    {
+      "id": "M-6",
+      "text": "Churn analysis: scheduling frustration is a leading indicator of churn in months 2-3 of onboarding",
+      "source_lines": [26],
+      "type": "stated"
+    },
+    {
+      "id": "M-7",
+      "text": "Engineer Lead estimate: 8 weeks, the absolute minimum for a good experience",
+      "source_lines": [30],
+      "type": "stated"
+    }
+  ]
+}

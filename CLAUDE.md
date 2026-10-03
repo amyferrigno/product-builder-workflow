@@ -9,8 +9,8 @@ This file documents how we build and maintain this agentic PM tool.
 3. **Roadmaps are Problems**: Frame roadmaps by the problems they solve, not the features they add.
 4. **Strategy Says No**: Write explicit non-goals. Strategy is the authority to reject scope.
 5. **Define Success First**: One primary metric, guardrails, target with timeframe. Before building.
-6. **Does This Need AI?**: Apply the 5-gate framework. Watch for red flags: complexity theatre, "because AI", no baseline.
-7. **AI-First PRD**: AI features need dedicated PRDs covering training data, failure modes, eval thresholds.
+6. **5-Gate AI Framework**: Every AI proposal must pass five gates (probabilistic, pattern match, data ready, error tolerance, positive ROI). Red flags block: known finite rules, insufficient data, catastrophic errors, explainability needed, UX problem in disguise, commodity tool rebuild.
+7. **AI-First PRD**: State what good looks like (examples), constraints (never do this), data/context needs, architecture (prompt vs RAG vs agent), test set (good/bad/edge cases), and observability (metrics, thresholds).
 8. **Design for Wrong**: Plan for when the AI fails. Build trust, control and recovery into the UX.
 9. **Evals are a Gate**: 1-to-4 scale, weighted, thresholds. Evals block ship. No handwaving.
 10. **Alignment Needs Records**: All decisions go in `decisions.md` with reasons, not chat. Write to `decisions.md` when alignment happens.
@@ -27,18 +27,14 @@ This file documents how we build and maintain this agentic PM tool.
 
 ## Repo Layout
 
-- `.claude/`: Agent/skill/hook code (empty scaffold in M0).
-- `connectors/`: Registry, scripts, query builders, provider integrations.
-- `schemas/`: JSON Schema validators for all handoff formats.
-- `scripts/`: Utilities (validator, etc.).
-- `templates/`: PRD, UX, ticket templates (empty in M0).
-- `fixtures/`: Test meeting notes and expected outputs.
-- `tests/`: Test suite. Run with `make test`.
-- `runs/`: Workspace for active runs (gitignored except `.gitkeep`).
-- `pm.config.yaml`: Configuration (placeholders for real values).
-- `connectors/registry.yaml`: Provider registry (all disabled in M0).
-- `decisions.md`: Aligned decisions with reasons (dated, no chat).
-- `memory.md`: Shared memory for the workflow.
+- `.claude/agents/`: Agent specs (notes-extractor, prd-writer, etc.)
+- `.claude/skills/`: Orchestration skills (e.g., `/pm-prd` for intake → extraction → problem framing)
+- `connectors/`: Registry, queries, integrations (M3+)
+- `schemas/`: JSON Schema for handoff formats (extraction, problem, PRD, etc.)
+- `scripts/`: intake.py, ai_gates.py, validators
+- `templates/`: problem.md, ai-gates.md, PRD template (M2+)
+- `fixtures/`: Synthetic meeting notes with golden outputs for testing
+- `tests/`, `runs/`: Test suite and active run workspaces
 
 ## Running Tests
 

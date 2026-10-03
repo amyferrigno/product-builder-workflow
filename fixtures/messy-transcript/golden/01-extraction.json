@@ -1,0 +1,171 @@
+{
+  "run_id": "2026-01-15-messy-transcript",
+  "attendee_roles": ["Engineer Lead", "Data Analyst", "Designer"],
+  "problems": [
+    {
+      "id": "P-1",
+      "text": "Users are missing meeting updates because the notification bell blends into the UI",
+      "source_lines": [9],
+      "type": "stated"
+    },
+    {
+      "id": "P-2",
+      "text": "Only 12% of users have notifications enabled, which the Engineer Lead summarises as both a discovery and an adoption problem",
+      "source_lines": [13, 14],
+      "type": "stated"
+    },
+    {
+      "id": "P-3",
+      "text": "The analytics warehouse is slow on aggregation queries because the schema is not partitioned by date and has too many indexed columns",
+      "source_lines": [17],
+      "type": "stated"
+    },
+    {
+      "id": "P-4",
+      "text": "Dark mode may be wanted by customers, but the Designer has not counted the requests",
+      "source_lines": [25, 27],
+      "type": "assumption"
+    }
+  ],
+  "proposed_solutions": [
+    {
+      "id": "S-1",
+      "text": "Redesign the notification UI: move the bell more central and add a color indicator for unread count",
+      "source_lines": [9],
+      "type": "stated"
+    },
+    {
+      "id": "S-2",
+      "text": "Add a badge counter to the notification UI",
+      "source_lines": [15],
+      "type": "stated"
+    },
+    {
+      "id": "S-3",
+      "text": "Repartition the schema by date and drop unnecessary indexes",
+      "source_lines": [21],
+      "type": "stated"
+    },
+    {
+      "id": "S-4",
+      "text": "Dark mode, which the Designer wants to prototype",
+      "source_lines": [23, 29],
+      "type": "stated"
+    }
+  ],
+  "user_segments": [
+    {
+      "id": "U-1",
+      "text": "Users who miss meeting updates",
+      "source_lines": [9],
+      "type": "stated"
+    },
+    {
+      "id": "U-2",
+      "text": "Evening users, who the Designer says would get less eye strain from dark mode",
+      "source_lines": [25],
+      "type": "stated"
+    },
+    {
+      "id": "U-3",
+      "text": "Users of the reporting dashboards, if the dataset grows to 5M rows",
+      "source_lines": [19],
+      "type": "stated"
+    }
+  ],
+  "requests": [
+    {
+      "id": "R-1",
+      "text": "Designer wants to prototype dark mode off the roadmap",
+      "source_lines": [29],
+      "type": "stated"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-1",
+      "text": "Add the notification redesign to the backlog",
+      "source_lines": [16],
+      "type": "stated"
+    },
+    {
+      "id": "D-2",
+      "text": "Add the schema repartitioning to the backlog and schedule the actual planning later",
+      "source_lines": [22],
+      "type": "stated"
+    },
+    {
+      "id": "D-3",
+      "text": "Keep dark mode in the ideas backlog, not the roadmap",
+      "source_lines": [28, 29],
+      "type": "stated"
+    },
+    {
+      "id": "D-4",
+      "text": "The Designer may prototype dark mode off the roadmap",
+      "source_lines": [29, 30],
+      "type": "stated"
+    }
+  ],
+  "disagreements": [],
+  "open_questions": [
+    {
+      "id": "Q-1",
+      "text": "How many customers want dark mode? Not known yet",
+      "source_lines": [26, 27],
+      "type": "stated"
+    },
+    {
+      "id": "Q-2",
+      "text": "The Engineer Lead asked whether anyone checked Slack about the API outage yesterday; the Designer had not seen anything and the topic was not picked up again",
+      "source_lines": [22, 23],
+      "type": "stated"
+    }
+  ],
+  "action_items": [
+    {
+      "id": "A-1",
+      "text": "Engineer Lead to send a calendar invite for the next sync, next week or maybe Wednesday",
+      "source_lines": [33],
+      "type": "stated"
+    }
+  ],
+  "metrics_mentioned": [
+    {
+      "id": "M-1",
+      "text": "8 user tests; 6 of them missed the bell initially (the Designer says about 75%)",
+      "source_lines": [11],
+      "type": "stated"
+    },
+    {
+      "id": "M-2",
+      "text": "Only 12% of users have notifications enabled",
+      "source_lines": [13],
+      "type": "stated"
+    },
+    {
+      "id": "M-3",
+      "text": "On a 1M row dataset, a simple GROUP BY takes 7 seconds",
+      "source_lines": [17],
+      "type": "stated"
+    },
+    {
+      "id": "M-4",
+      "text": "A competing tool does the same in under 1 second",
+      "source_lines": [17],
+      "type": "stated"
+    },
+    {
+      "id": "M-5",
+      "text": "If the dataset grows to 5M rows, reporting dashboards will be unusable; not affecting users directly yet",
+      "source_lines": [19],
+      "type": "stated"
+    },
+    {
+      "id": "M-6",
+      "text": "Estimated fix: maybe 2 weeks of work",
+      "source_lines": [21],
+      "type": "stated"
+    }
+  ]
+}

@@ -20,8 +20,8 @@ All tests must pass before merging. Schema validation is automatic.
 
 See [planning.md](planning.md) for the full roadmap and status.
 
-- **M0** (current): Scaffold—repo layout, config, schemas, validator, tests.
-- **M1**: Extraction + problem framing.
+- **M0** (done): Scaffold—repo layout, config, schemas, validator, tests.
+- **M1** (current): Extraction + problem framing.
 - **M2**: PRD writer + auditor.
 - **M3**: Data enrichment.
 - **M4**: Customer anecdotes.
@@ -30,16 +30,45 @@ See [planning.md](planning.md) for the full roadmap and status.
 - **M7**: Jira publish.
 - **M8**: Cost + polish.
 
+## Running the Workflow (M1: Extraction + Problem Framing)
+
+### Intake: Convert notes to numbered, citable source
+
+```bash
+# From a file
+.venv/bin/python scripts/intake.py path/to/notes.md [--slug name] [--date YYYY-MM-DD]
+
+# From stdin
+echo "notes here" | .venv/bin/python scripts/intake.py - --slug mymeeting
+
+# Output: run ID and path to numbered notes
+```
+
+Supports `.md`, `.txt`, `.docx`, and stdin. Creates `runs/<date>-<slug>/` with numbered notes and `state.json`.
+
+### Validators
+
+```bash
+# Check extraction.json
+.venv/bin/python scripts/validate_extraction.py runs/2026-01-15-demo/
+
+# Check problem.md
+.venv/bin/python scripts/validate_problem.py runs/2026-01-15-demo/
+```
+
+Both exit 1 on errors, print one error per line. Extraction validator enforces that all cited lines are non-blank. Problem validator also checks AI verdict logic.
+
 ## Key Files
 
 - `CLAUDE.md`: Principles and repo layout.
 - `decisions.md`: Aligned decisions with reasons.
-- `memory.md`: Shared team context.
+- `memory.md`: Learnings and patterns from runs.
 - `PLAN.md`: Current milestone steps.
-- `pm.config.yaml`: Configuration (placeholders for real values).
-- `connectors/registry.yaml`: Provider registry.
-- `schemas/`: JSON Schema validators for handoff formats.
-- `scripts/validate_schema.py`: Validator CLI tool.
+- `pm.config.yaml`: Configuration and model tier mapping.
+- `connectors/registry.yaml`: Registry of data sources.
+- `schemas/`: JSON Schema validators.
+- `scripts/`: Intake, AI gates logic, validators.
+- `fixtures/`: Synthetic meeting notes with golden outputs.
 
 ## Architecture
 

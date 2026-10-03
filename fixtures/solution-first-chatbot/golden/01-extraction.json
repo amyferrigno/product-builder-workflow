@@ -1,0 +1,117 @@
+{
+  "run_id": "2026-01-15-solution-first-chatbot",
+  "attendee_roles": ["VP Product", "PM", "Engineer Lead"],
+  "problems": [
+    {
+      "id": "P-1",
+      "text": "Customer support is expensive (stated by the VP Product, no figure given)",
+      "source_lines": [8],
+      "type": "stated"
+    },
+    {
+      "id": "P-2",
+      "text": "The VP Product says the support team spends all day on repetitive questions; this has not been checked with support",
+      "source_lines": [12, 16],
+      "type": "stated"
+    }
+  ],
+  "proposed_solutions": [
+    {
+      "id": "S-1",
+      "text": "Build an AI chatbot to handle customer support automatically",
+      "source_lines": [8],
+      "type": "stated"
+    }
+  ],
+  "user_segments": [
+    {
+      "id": "U-1",
+      "text": "The support team, which the VP Product says answers repetitive questions all day",
+      "source_lines": [12],
+      "type": "stated"
+    }
+  ],
+  "requests": [
+    {
+      "id": "R-1",
+      "text": "The chatbot would answer support questions such as how to reschedule a meeting and which calendar systems are supported",
+      "source_lines": [12],
+      "type": "stated"
+    },
+    {
+      "id": "R-2",
+      "text": "VP Product wants a prototype by end of Q4",
+      "source_lines": [32],
+      "type": "stated"
+    },
+    {
+      "id": "R-3",
+      "text": "VP Product's reason to act: competition is shipping chatbots and \"we need to keep up\"",
+      "source_lines": [28],
+      "type": "stated"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-1",
+      "text": "PM to gather data first: the support ticket breakdown and whether there is actual demand from customers",
+      "source_lines": [30],
+      "type": "stated"
+    },
+    {
+      "id": "D-2",
+      "text": "Revisit in two weeks once the PM has numbers; VP Product agreed",
+      "source_lines": [34, 36],
+      "type": "stated"
+    }
+  ],
+  "disagreements": [],
+  "open_questions": [
+    {
+      "id": "Q-1",
+      "text": "How many support tickets are there per question type? The VP Product does not know the exact breakdown",
+      "source_lines": [22, 24],
+      "type": "stated"
+    },
+    {
+      "id": "Q-2",
+      "text": "Is there actual demand from customers for a chatbot?",
+      "source_lines": [30],
+      "type": "stated"
+    },
+    {
+      "id": "Q-3",
+      "text": "What is the support team actually spending its time on? The VP Product has not talked to support yet",
+      "source_lines": [14, 16],
+      "type": "stated"
+    }
+  ],
+  "action_items": [
+    {
+      "id": "A-1",
+      "text": "PM to check with support on their top issues",
+      "source_lines": [18],
+      "type": "stated"
+    },
+    {
+      "id": "A-2",
+      "text": "PM to get the support ticket breakdown and see if there is actual demand from customers",
+      "source_lines": [30],
+      "type": "stated"
+    }
+  ],
+  "metrics_mentioned": [
+    {
+      "id": "M-1",
+      "text": "Support tickets: \"maybe a few hundred per month\", a guess by the VP Product",
+      "source_lines": [24],
+      "type": "stated"
+    },
+    {
+      "id": "M-2",
+      "text": "Engineer Lead: a few hundred is pretty thin if the chatbot must handle diverse questions reliably",
+      "source_lines": [26],
+      "type": "stated"
+    }
+  ]
+}

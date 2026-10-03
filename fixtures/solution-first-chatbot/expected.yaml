@@ -1,0 +1,12 @@
+run_id: "2026-01-15-solution-first-chatbot"
+problem_count: 1
+primary_problem_id: "PB-1"
+primary_problem_validation_status: "UNVALIDATED"
+parked_problem_count: 0
+ai_proposed: true
+ai_verdict_allowed:
+  - "AI_NOT_JUSTIFIED"
+  - "NEEDS_DATA"
+must_have_open_questions: false
+must_have_disagreements: false
+must_have_reframed_from_solution: true

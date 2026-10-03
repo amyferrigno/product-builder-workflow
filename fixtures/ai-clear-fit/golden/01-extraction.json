@@ -1,0 +1,151 @@
+{
+  "run_id": "2026-01-15-ai-clear-fit",
+  "attendee_roles": ["VP Product", "Customer Success Manager", "Engineer Lead", "Data Analyst"],
+  "problems": [
+    {
+      "id": "P-1",
+      "text": "Meeting requests arrive as free-form emailed text and the team manually parses each one into the system, taking 2 hours per request",
+      "source_lines": [10, 14],
+      "type": "stated"
+    },
+    {
+      "id": "P-2",
+      "text": "Customers wait 24-48 hours for confirmation of a request",
+      "source_lines": [24],
+      "type": "stated"
+    },
+    {
+      "id": "P-3",
+      "text": "Risk: if the AI misparses a constraint, the meeting gets scheduled wrong",
+      "source_lines": [26],
+      "type": "stated"
+    }
+  ],
+  "proposed_solutions": [
+    {
+      "id": "S-1",
+      "text": "Parse the free-form requests into structured scheduling constraints; the Engineer Lead calls this NLU work",
+      "source_lines": [12],
+      "type": "stated"
+    },
+    {
+      "id": "S-2",
+      "text": "Automate 80% of the parsing with an LLM-based parser",
+      "source_lines": [22],
+      "type": "stated"
+    },
+    {
+      "id": "S-3",
+      "text": "Architecture proposed by the Engineer Lead: a fine-tuned model on the request data, a confidence threshold so low-confidence parses get human review, and monthly retraining on new labeled data",
+      "source_lines": [36],
+      "type": "stated"
+    }
+  ],
+  "user_segments": [
+    {
+      "id": "U-1",
+      "text": "One of the largest customers, a legal firm with complex scheduling rules",
+      "source_lines": [8],
+      "type": "stated"
+    },
+    {
+      "id": "U-2",
+      "text": "Other customers whose requests are also in the logs",
+      "source_lines": [16],
+      "type": "stated"
+    },
+    {
+      "id": "U-3",
+      "text": "The internal team that parses requests by hand",
+      "source_lines": [14],
+      "type": "stated"
+    }
+  ],
+  "requests": [
+    {
+      "id": "R-1",
+      "text": "Every parsed request still goes to a human for review; the AI output is a draft, not final",
+      "source_lines": [28],
+      "type": "stated"
+    },
+    {
+      "id": "R-2",
+      "text": "Measure parser accuracy on a holdout set",
+      "source_lines": [30],
+      "type": "stated"
+    },
+    {
+      "id": "R-3",
+      "text": "Monitor drift over time as request patterns evolve",
+      "source_lines": [32],
+      "type": "stated"
+    },
+    {
+      "id": "R-4",
+      "text": "Ongoing evals and retraining; this is not a one-time model",
+      "source_lines": [34],
+      "type": "stated"
+    }
+  ],
+  "decisions": [],
+  "disagreements": [],
+  "open_questions": [],
+  "action_items": [
+    {
+      "id": "A-1",
+      "text": "Spec the architecture, as proposed by the Engineer Lead",
+      "source_lines": [36],
+      "type": "stated"
+    }
+  ],
+  "metrics_mentioned": [
+    {
+      "id": "M-1",
+      "text": "One large customer sent 500 meeting requests last month",
+      "source_lines": [8],
+      "type": "stated"
+    },
+    {
+      "id": "M-2",
+      "text": "The team spends 2 hours per request on manual parsing",
+      "source_lines": [14],
+      "type": "stated"
+    },
+    {
+      "id": "M-3",
+      "text": "For 500 requests, the VP Product says that is 1000 hours per month of manual work",
+      "source_lines": [14],
+      "type": "stated"
+    },
+    {
+      "id": "M-4",
+      "text": "Logs of those 500 requests plus another 800 from other customers: 1300 labeled examples of free-form request to structured output",
+      "source_lines": [16],
+      "type": "stated"
+    },
+    {
+      "id": "M-5",
+      "text": "About 30 distinct constraint types",
+      "source_lines": [20],
+      "type": "stated"
+    },
+    {
+      "id": "M-6",
+      "text": "Target: automate 80% of the parsing",
+      "source_lines": [22],
+      "type": "stated"
+    },
+    {
+      "id": "M-7",
+      "text": "Customers currently wait 24-48 hours for confirmation; with automation the Customer Success Manager says it could be minutes",
+      "source_lines": [24],
+      "type": "stated"
+    },
+    {
+      "id": "M-8",
+      "text": "Data Analyst: an MVP could be running in 4 weeks",
+      "source_lines": [38],
+      "type": "stated"
+    }
+  ]
+}

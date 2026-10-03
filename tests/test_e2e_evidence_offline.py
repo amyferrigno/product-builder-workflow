@@ -63,13 +63,16 @@ def test_offline_evidence_pipeline_on_clean_meeting(tmp_path):
         "scripts/enrich.py", "run", run_dir,
         "--provider", "mock_warehouse", "--query-id", "ticket_share_by_category",
         "--params", json.dumps(SHARE_PARAMS), "--question", "How common are scheduling conflicts?",
-        "--claim", f"{round(share * 100)}% of {total} tickets are scheduling conflicts",
+        "--claim", "{value_pct}% of {n} tickets are scheduling conflicts",
         "--supports", "PB-1", "--registry", MOCK_REGISTRY, "--config", MOCK_CONFIG,
         "--queries-dir", queries, "--cache-dir", cache,
     )
     assert enrich.returncode == 0, enrich.stderr
-    card_id = json.loads(enrich.stdout)["id"]
+    printed = json.loads(enrich.stdout)
+    card_id = printed["id"]
     assert card_id == "EV-001"
+    assert printed["n"] == total and printed["confidence"] == "high"
+    assert printed["claim"].endswith(f"% of {total} tickets are scheduling conflicts")
     card = json.loads((run_dir / "03-evidence" / f"{card_id}.json").read_text())
     assert abs(card["value"] - share) < 0.005
     assert card["confidence"] == "high"

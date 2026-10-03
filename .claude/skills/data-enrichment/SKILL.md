@@ -22,6 +22,17 @@ Read the registry. Look for an entry with `enabled: true` and capability `sql_re
 
 Call agent `data-enricher` with paths only: the run directory, the registry path and the config path. The agent runs `scripts/enrich.py`, which is the only thing that writes evidence cards (`03-evidence/EV-###.json`). Do not write or edit cards yourself.
 
+How the agent calls it:
+- `--claim` is a TEMPLATE. Placeholders: `{value}` (provider value), `{value_pct}` (value x 100, no percent sign, only for fractions 0 to 1, written as `{value_pct}%` or `{value_pct} percent`), `{n}`. No digit may be written in the template; the script fills the numbers and prints `value`, `n` and the rendered `claim`.
+- Required options: `run_dir`, `--provider`, `--question`, `--claim`, `--supports`, and one of `--query-id` or `--sql`. Optional: `--params`, `--segment`, `--period`, `--metric`, `--registry`, `--config`, `--value-field`, `--n-field`.
+- Parameter names, formats, allowed values and a working `example` are in `connectors/queries/index.yaml`. Never guess parameter values.
+- `--period` and `--segment` are labels stored on the card; they should mirror the params used.
+- Example, share of tickets:
+  `.venv/bin/python scripts/enrich.py run <run_dir> --provider mock_warehouse --query-id ticket_share_by_category --params '{"category": "scheduling_conflict", "period_start": "2025-07", "period_end": "2025-12"}' --question "What share of tickets are scheduling conflicts?" --claim "{value_pct}% of {n} tickets are scheduling conflicts" --supports PB-1 --period 2025-07..2025-12`
+- Example, median for a segment:
+  `.venv/bin/python scripts/enrich.py run <run_dir> --provider mock_warehouse --query-id median_minutes_to_confirm --params '{"segment": "enterprise"}' --question "How long to confirm?" --claim "Median is {value} minutes over {n} meetings" --supports PB-1 --segment enterprise`
+- On `query returned no rows for these params`: check the allowed values once, retry once, then record an evidence gap.
+
 ### Step 3: Validate
 
 Run:
@@ -50,7 +61,7 @@ Show the human a short table from the cards: `id`, `claim`, `value`, `n`, `confi
 
 ## Rules
 
-- Never type a number into a card or a claim yourself. Numbers come from provider output through `scripts/enrich.py`.
+- Never type a number into a card or a claim yourself (claims are templates). Numbers come from provider output through `scripts/enrich.py`.
 - Cards from ad-hoc SQL are `confidence: low` and their query is saved as `unreviewed`. Say so when you list them.
 - Read-only: a hook blocks mutating SQL, and the provider and script refuse it too.
 - Never run `scripts/approve.py` and never write under `approvals/`.

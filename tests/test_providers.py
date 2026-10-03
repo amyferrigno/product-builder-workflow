@@ -271,7 +271,7 @@ def adhoc(sql):
     ("SELECT COUNT(*) FROM accounts; DROP TABLE accounts", "multiple statements are not allowed"),
     ("SELECT * FROM customers", "SELECT * is not allowed on PII table 'customers'"),
     ("SELECT account_id FROM accounts", "query must be aggregate"),
-    ("SELECT segment FROM accounts GROUP BY segment LIMIT 9999", "LIMIT 9999 exceeds max_rows 500"),
+    ("SELECT segment, COUNT(*) FROM accounts GROUP BY segment LIMIT 9999", "LIMIT 9999 exceeds max_rows 500"),
 ])
 def test_mock_warehouse_refuses_unsafe_sql(tmp_path, sql, message):
     with pytest.raises(ProviderError) as exc:
@@ -304,9 +304,69 @@ def test_mock_warehouse_missing_bind_param(tmp_path):
 
 def test_mock_warehouse_allows_aggregate_on_pii_table(tmp_path):
     """Aggregates over the PII table are allowed; only row-level reads are refused."""
-    sql = "SELECT COUNT(*) AS c, MAX(email) AS e FROM customers"
+    sql = "SELECT COUNT(*) AS c, COUNT(DISTINCT email) AS e FROM customers"
     output = run_provider("mock_warehouse", adhoc(sql), MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
     assert output["rows"][0]["c"] == len(read_csv("customers.csv"))
+
+
+def test_mock_warehouse_refuses_value_aggregate_on_pii_table(tmp_path):
+    sql = "SELECT MAX(email) AS e FROM customers"
+    with pytest.raises(ProviderError) as exc:
+        run_provider("mock_warehouse", adhoc(sql), MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
+    assert "allows only COUNT aggregates" in str(exc.value)
+
+
+NO_ROWS = "provider 'mock_warehouse' refused the request: query returned no rows for these params"
+
+
+def test_mock_warehouse_no_matching_rows_is_an_error_not_a_null(tmp_path):
+    request = {"question": "q", "query_id": "median_minutes_to_confirm", "params": {"segment": "no_such_segment"}}
+    with pytest.raises(ProviderError) as exc:
+        run_provider("mock_warehouse", request, MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
+    assert str(exc.value) == NO_ROWS
+
+
+def test_mock_warehouse_empty_result_set_is_an_error(tmp_path):
+    sql = "SELECT segment, COUNT(*) AS c FROM accounts WHERE segment = 'nope' GROUP BY segment"
+    with pytest.raises(ProviderError) as exc:
+        run_provider("mock_warehouse", adhoc(sql), MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
+    assert str(exc.value) == NO_ROWS
+
+
+def test_mock_warehouse_null_aggregate_is_an_error(tmp_path):
+    request = {"question": "q", "query_id": "ticket_share_by_category",
+               "params": {"category": "billing", "period_start": "2030-01", "period_end": "2030-12"}}
+    # COUNT(*) is 0 and the share is NULL here.
+    with pytest.raises(ProviderError) as exc:
+        run_provider("mock_warehouse", request, MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
+    assert str(exc.value) == NO_ROWS
+
+
+def library():
+    return yaml.safe_load((REPO_ROOT / "connectors" / "queries" / "index.yaml").read_text())["queries"]
+
+
+def test_every_library_query_documents_params_and_an_example_that_returns_a_number(tmp_path):
+    for query in library():
+        names = [p["name"] for p in query["params"]]
+        assert names, query["id"]
+        for p in query["params"]:
+            assert p["description"], (query["id"], p["name"])
+            assert ("format" in p) != ("allowed_values" in p), (query["id"], p["name"])
+        example = query["example"]
+        assert sorted(example["params"]) == sorted(names), query["id"]
+        request = {"question": example["question"], "query_id": query["id"], "params": example["params"]}
+        output = run_provider("mock_warehouse", request, MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
+        value = output["rows"][0][query["value_field"]]
+        assert isinstance(value, (int, float)) and not isinstance(value, bool), query["id"]
+
+
+def test_allowed_values_match_the_csv_data():
+    by_name = {p["name"]: p for q in library() for p in q["params"]}
+    categories = {t["category"] for t in read_csv("support_tickets.csv")}
+    segments = {a["segment"] for a in read_csv("accounts.csv")}
+    assert set(by_name["category"]["allowed_values"]) == categories
+    assert set(by_name["segment"]["allowed_values"]) == segments
 
 
 def test_load_registry_and_config_helpers():

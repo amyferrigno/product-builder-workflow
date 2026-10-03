@@ -6,14 +6,25 @@ Usage: python scripts/validate_evidence.py <run_dir> [--queries-dir connectors/q
 Checks every runs/<id>/03-evidence/EV-###.json: schema, file name matches id, unique ids,
 supports_problem exists in 02-problem.md, query_id exists in the query library, confidence
 matches the library status (reviewed = high, otherwise low), and every number in the claim
-traces to value or n. Exit 0 if valid, 1 with one error per line.
+is exactly the provider value, the value as a percent, or n. For library queries it also checks
+that query_hash is the sha256 of the library .sql file text and that source is the query's
+provider. Exit 0 if valid, 1 with one error per line.
 
-Also holds the helpers scripts/enrich.py shares: load_library, problem_ids, claim_number_errors.
+Claim number rules (the same ones scripts/enrich.py uses to render a claim template):
+  {value}      integers as-is, other numbers rounded to at most 2 decimals, trailing zeros trimmed
+  {value_pct}  value x 100 rounded to at most 1 decimal, trailing .0 trimmed; only when
+               0 <= value <= 1, and only written directly before % or the word "percent"
+  {n}          the n integer
+No rounding slack and no magnitude words (k, m, bn, thousand, million, billion) after a number.
+
+Also holds the helpers scripts/enrich.py shares: load_library, problem_ids, claim_number_errors,
+render_claim, query_hash_of, param_names.
 """
 
 import re
 import sys
 import json
+import hashlib
 import argparse
 from pathlib import Path
 from typing import Any, Dict, List
@@ -29,7 +40,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from validate_problem import parse_problem_md
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
+NUMBER_RE = re.compile(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)?")
+MAGNITUDE_WORDS = r"(?:k|m|bn|thousand|million|billion)"
+MAGNITUDE_AFTER_RE = re.compile(r"\s*" + MAGNITUDE_WORDS + r"\b", re.IGNORECASE)
+PERCENT_AFTER_RE = re.compile(r"\s*%|\s+percent\b", re.IGNORECASE)
+PLACEHOLDER_RE = re.compile(r"\{([^{}]*)\}")
 
 
 def resolve_path(path: str) -> Path:
@@ -77,19 +92,81 @@ def confidence_for(status: str) -> str:
     return "high" if status == "reviewed" else "low"
 
 
+def _trim(text: str) -> str:
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def format_value(value: float) -> str:
+    """Integers as-is; other numbers rounded to at most 2 decimals, trailing zeros trimmed."""
+    if float(value).is_integer():
+        return str(int(value))
+    return _trim(f"{round(value, 2):.2f}")
+
+
+def format_value_pct(value: float) -> str:
+    """value x 100 rounded to at most 1 decimal, trailing .0 trimmed. Raises ValueError outside 0..1."""
+    if not 0 <= value <= 1:
+        raise ValueError("{value_pct} needs a provider value between 0 and 1")
+    return _trim(f"{round(value * 100, 1):.1f}")
+
+
+def param_names(query: Dict[str, Any]) -> List[str]:
+    """Parameter names of a library query (entries are objects with a name, or plain strings)."""
+    names = []
+    for p in query.get("params") or []:
+        names.append(p.get("name") if isinstance(p, dict) else p)
+    return [n for n in names if isinstance(n, str)]
+
+
+def query_hash_of(queries_dir: Path, query: Dict[str, Any]) -> str:
+    """sha256 of the library .sql file text, read the way the provider reads it."""
+    with open(queries_dir / query["file"], "r") as f:
+        return hashlib.sha256(f.read().encode("utf-8")).hexdigest()
+
+
+def render_claim(template: str, value: float, n: int) -> str:
+    """Fill a claim template. Raises ValueError with a one-line message when it is not allowed."""
+    names = PLACEHOLDER_RE.findall(template)
+    for name in names:
+        if name not in ("value", "value_pct", "n"):
+            raise ValueError(f"unknown placeholder '{{{name}}}' in claim template")
+    if "{value}" not in template and "{value_pct}" not in template:
+        raise ValueError("claim template must contain {value} or {value_pct}")
+    outside = PLACEHOLDER_RE.sub("", template)
+    if "{" in outside or "}" in outside:
+        raise ValueError("claim template has unbalanced braces")
+    if re.search(r"\d", outside):
+        raise ValueError("claim template must not contain literal numbers; use {value}, {value_pct} or {n}")
+    for m in PLACEHOLDER_RE.finditer(template):
+        rest = template[m.end():]
+        if MAGNITUDE_AFTER_RE.match(rest):
+            raise ValueError("claim template must not put a magnitude word (k, m, bn, thousand, million, billion) after a number")
+        has_percent = PERCENT_AFTER_RE.match(rest) is not None
+        if m.group(1) == "value_pct":
+            if not has_percent:
+                raise ValueError("{value_pct} must be followed directly by % or the word percent")
+        elif re.match(r"\s*%", rest):
+            raise ValueError("% may follow only {value_pct}")
+    values = {"value": format_value(value), "n": str(n)}
+    if "{value_pct}" in template:
+        values["value_pct"] = format_value_pct(value)
+    return PLACEHOLDER_RE.sub(lambda m: values[m.group(1)], template)
+
+
 def claim_number_errors(claim: str, value: float, n: int) -> List[str]:
-    """Every number in the claim must be the value (or a rounding), value as a percent, or n."""
+    """Every number in the claim must be exactly {value}, {value_pct} (before % or percent) or {n}."""
     errors = []
-    allowed = [float(n), float(value), float(round(value)), round(value, 1), round(value, 2)]
-    if 0 < value < 1:
-        allowed += [float(round(value * 100)), round(value * 100, 1)]
-    for token in NUMBER_RE.findall(claim):
-        try:
-            number = float(token.replace(",", ""))
-        except ValueError:
-            errors.append(f"claim number '{token}' does not match provider value")
-            continue
-        if not any(abs(number - a) < 1e-9 for a in allowed):
+    plain = {format_value(value), str(n)}
+    pct = format_value_pct(value) if 0 <= value <= 1 else None
+    for m in NUMBER_RE.finditer(claim):
+        token = m.group(0)
+        rest = claim[m.end():]
+        if MAGNITUDE_AFTER_RE.match(rest):
+            errors.append(f"claim number '{token}' must not be followed by a magnitude word")
+        elif PERCENT_AFTER_RE.match(rest):
+            if pct is None or token != pct:
+                errors.append(f"claim number '{token}' does not match provider value")
+        elif token not in plain:
             errors.append(f"claim number '{token}' does not match provider value")
     return errors
 
@@ -164,6 +241,15 @@ def validate_evidence(run_dir: str, queries_dir: str = "connectors/queries") -> 
                         f"{name}: confidence {card['confidence']} does not match query status "
                         f"{query.get('status')} (expected {expected})"
                     )
+                if card["source"] != query.get("provider"):
+                    errors.append(f"{name}: source {card['source']} does not match the query provider")
+                try:
+                    expected_hash = query_hash_of(resolve_path(queries_dir), query)
+                except (OSError, KeyError, TypeError) as e:
+                    errors.append(f"{name}: cannot read the library query file: {e}")
+                else:
+                    if card["query_hash"] != expected_hash:
+                        errors.append(f"{name}: query_hash does not match the library query")
 
         for msg in claim_number_errors(card["claim"], card["value"], card["n"]):
             errors.append(f"{name}: {msg}")

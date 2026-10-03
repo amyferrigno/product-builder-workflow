@@ -5,17 +5,25 @@ provider output, never from the caller.
 
 Usage:
   python scripts/enrich.py run <run_dir> --provider P (--query-id Q | --sql "SELECT ...")
-      --question "..." --claim "..." --supports PB-1 [--params '{...}'] [--segment S]
+      --question "..." --claim "TEMPLATE" --supports PB-1 [--params '{...}'] [--segment S]
       [--period P] [--metric M] [--registry R] [--config C] [--queries-dir D] [--cache-dir D]
       [--value-field F] [--n-field F]
 
+--claim is a TEMPLATE the script fills from the provider output, so the caller never types a number:
+  {value}      the provider value (integers as-is, else at most 2 decimals, trailing zeros trimmed)
+  {value_pct}  value x 100, at most 1 decimal, no percent sign; write it as {value_pct}% or
+               {value_pct} percent; only valid when 0 <= value <= 1
+  {n}          the n integer
+The template needs {value} or {value_pct}, no digits of its own, no unknown placeholders, no
+magnitude word (k, m, bn, thousand, million, billion) after a placeholder, and % only after
+{value_pct}. The card stores the rendered claim and the template (claim_template).
 Library query: value comes from the query's value_field in the first row, n from n_field.
 Confidence is high for a reviewed query, low otherwise.
 Ad-hoc (--sql): guarded by sql_guard first, sent to the provider as query_id adhoc_<8 hex>
 with the SQL text in params["__sql"], saved to the library as status unreviewed, confidence low.
 --value-field / --n-field pick the columns for ad-hoc queries (default: first column, and the
 provider's row count).
-Prints {"id": ..., "path": ...} on success; errors go to stderr, one per line, exit 1.
+Prints {"id", "path", "value", "n", "claim", "confidence"} as JSON on success; errors go to stderr, one per line, exit 1.
 """
 
 import os
@@ -39,6 +47,7 @@ from providers import run_provider, ProviderError, load_config, resolve_path
 from sql_guard import check_sql
 from validate_evidence import (
     load_library, problem_ids, claim_number_errors, confidence_for, load_evidence_schema,
+    render_claim, param_names,
 )
 
 
@@ -67,7 +76,7 @@ def save_adhoc_query(queries_dir: Path, query_id: str, sql: str, entry: Dict[str
     library.append(entry)
     try:
         with open(queries_dir / entry["file"], "w") as f:
-            f.write(sql if sql.endswith("\n") else sql + "\n")
+            f.write(sql)  # exactly the text the provider hashed
         with open(queries_dir / "index.yaml", "w") as f:
             yaml.safe_dump({"queries": library}, f, sort_keys=False)
     except OSError as e:
@@ -76,11 +85,11 @@ def save_adhoc_query(queries_dir: Path, query_id: str, sql: str, entry: Dict[str
 
 def to_number(value: Any, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise EnrichError(f"provider {label} is not a number: {value!r}")
+        raise EnrichError(f"provider {label} is not a number")  # never echo the cell contents
     return float(value)
 
 
-def run(args) -> Dict[str, str]:
+def run(args) -> Dict[str, Any]:
     run_dir = Path(args.run_dir)
     if not run_dir.is_dir():
         raise EnrichError(f"Run directory not found: {args.run_dir}")
@@ -98,6 +107,11 @@ def run(args) -> Dict[str, str]:
         raise EnrichError("--params must be valid JSON")
     if not isinstance(params, dict):
         raise EnrichError("--params must be a JSON object")
+
+    try:
+        render_claim(args.claim, 0.5, 0)  # refuse a bad template before calling the provider
+    except ValueError as e:
+        raise EnrichError(str(e))
 
     if bool(args.query_id) == bool(args.sql):
         raise EnrichError("give exactly one of --query-id or --sql")
@@ -139,7 +153,7 @@ def run(args) -> Dict[str, str]:
             raise EnrichError(f"unknown query_id '{args.query_id}'")
         if query.get("provider") != args.provider:
             raise EnrichError(f"query '{args.query_id}' belongs to provider '{query.get('provider')}'")
-        missing = [p for p in query.get("params", []) if p not in params]
+        missing = [p for p in param_names(query) if p not in params]
         if missing:
             raise EnrichError(f"missing params for '{args.query_id}': {', '.join(missing)}")
         query_id = args.query_id
@@ -172,13 +186,18 @@ def run(args) -> Dict[str, str]:
     else:
         n = output["n"]
 
-    claim_errors = claim_number_errors(args.claim, value, n)
+    try:
+        claim = render_claim(args.claim, value, n)
+    except ValueError as e:
+        raise EnrichError(str(e))
+    claim_errors = claim_number_errors(claim, value, n)
     if claim_errors:
         raise EnrichError("\n".join(claim_errors))
 
     card = {
         "id": next_card_id(run_dir / "03-evidence"),
-        "claim": args.claim,
+        "claim": claim,
+        "claim_template": args.claim,
         "metric": metric,
         "value": value,
         "segment": args.segment or str(params.get("segment", "all")),
@@ -207,7 +226,7 @@ def run(args) -> Dict[str, str]:
             "description": args.question,
             "metric": metric,
             "metric_definition": "ad-hoc query, not reviewed",
-            "params": sorted(params.keys()),
+            "params": [{"name": k, "description": "ad-hoc parameter"} for k in sorted(params.keys())],
             "value_field": value_field,
             "n_field": n_field,
             "status": "unreviewed",
@@ -221,7 +240,10 @@ def run(args) -> Dict[str, str]:
             f.write("\n")
     except OSError as e:
         raise EnrichError(f"Cannot write {card_path}: {e}")
-    return {"id": card["id"], "path": str(card_path)}
+    return {
+        "id": card["id"], "path": str(card_path), "value": value, "n": n,
+        "claim": claim, "confidence": card["confidence"],
+    }
 
 
 def main():
@@ -234,7 +256,8 @@ def main():
     p.add_argument("--sql", default=None, help="Ad-hoc SQL (saved as unreviewed, confidence low)")
     p.add_argument("--params", default="{}", help="JSON object of query parameters")
     p.add_argument("--question", required=True)
-    p.add_argument("--claim", required=True)
+    p.add_argument("--claim", required=True,
+                   help="Claim template with {value}, {value_pct} (before %% or percent) and {n}; no digits")
     p.add_argument("--supports", required=True, help="Problem id, e.g. PB-1")
     p.add_argument("--segment", default=None)
     p.add_argument("--period", default=None)

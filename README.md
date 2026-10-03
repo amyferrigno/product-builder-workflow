@@ -93,18 +93,20 @@ Commands (skills in `.claude/skills/`):
 - `/pm-anecdotes <run-id> [--keywords "a,b"]`: `anecdotes.py pull` writes `04-anecdotes.candidates.json`, agent `anecdote-curator` keeps 3 to 5 (with a counter-anecdote when one exists), `validate_anecdotes.py` checks them.
 - `/pm-prd` runs both in parallel when the registry has enabled providers.
 
+The `--claim` is a template, not a sentence with numbers. The script fills `{value}` (the provider value), `{value_pct}` (value x 100, written as `{value_pct}%` or `{value_pct} percent`, only for fractions 0 to 1) and `{n}` from the provider output, and refuses a template with its own digits, unknown placeholders or a magnitude word (k, m, bn, thousand, million, billion) after a number. `validate_evidence.py` re-checks every number in a claim with the same rules, and checks that `query_hash` is the sha256 of the library `.sql` file text and that `source` is the query's provider. Parameter names, formats, allowed values and a working `example` for each library query are in `connectors/queries/index.yaml`.
+
 Offline demo (no real connections): the real `connectors/registry.yaml` stays all-disabled. A separate mock registry enables a fake warehouse and a fake anecdote source:
 
 ```bash
 .venv/bin/python scripts/enrich.py run runs/<run-id> --provider mock_warehouse --query-id median_minutes_to_confirm \
   --params '{"segment": "smb"}' --question "How long does confirming take for smb?" \
-  --claim "Median time to confirm is 62 minutes (n=94)" --supports PB-1 \
+  --claim "Median time to confirm is {value} minutes (n={n})" --supports PB-1 --segment smb \
   --registry fixtures/registry.mock.yaml --config fixtures/pm.config.mock.yaml
 .venv/bin/python scripts/anecdotes.py pull runs/<run-id> --provider mock_anecdotes --problem PB-1 --keywords "scheduling,confirm" \
   --registry fixtures/registry.mock.yaml --config fixtures/pm.config.mock.yaml
 ```
 
-Read-only guard: `scripts/sql_guard.py` allows only a single `SELECT` / `WITH ... SELECT`, rejects INSERT, UPDATE, DELETE, MERGE, DROP, ALTER, CREATE, GRANT, TRUNCATE, REPLACE, ATTACH and PRAGMA, `SELECT *` on `data.pii_tables`, non-aggregate queries (when `data.aggregate_only` is true) and a `LIMIT` above `data.max_rows_returned`. It is enforced in three places: the guard function, the provider and the hook `guard_readonly_query.py` (before Bash and `mcp__*` calls).
+Read-only guard: `scripts/sql_guard.py` allows only a single `SELECT` / `WITH ... SELECT`, rejects INSERT, UPDATE, DELETE, MERGE, DROP, ALTER, CREATE, GRANT, TRUNCATE, REPLACE, ATTACH and PRAGMA, `SELECT *` on `data.pii_tables`, non-aggregate queries (when `data.aggregate_only` is true: at least one aggregate call is needed, `GROUP BY` alone does not count; window functions, `group_concat` and `string_agg` are rejected), `[bracket]` identifiers, and any `LIMIT` that is not `LIMIT <integer>` or `LIMIT <integer> OFFSET <integer>` with the integer at most `data.max_rows_returned`. A query that touches a PII table may only select `COUNT(...)` expressions or literals and may not use `GROUP BY`, `MIN`, `MAX`, `SUM`, `AVG`, `group_concat` or `string_agg`; reviewed library queries that need to group by something must avoid the PII table. It is enforced in three places: the guard function, the provider and the hook `guard_readonly_query.py` (before Bash and `mcp__*` calls).
 
 PII scan: `scripts/pii.py` scrubs and scans for emails, phone numbers, URLs with user info and the names listed under `anecdotes.pii_terms` in the config. `anecdotes.py pull` drops records without consent and fails if PII remains. The hook `pii_scan.py` (after Write/Edit) scans `04-anecdotes.json`, `04-anecdotes.candidates.json` and `prd.md`. Manual check: `.venv/bin/python scripts/pii.py scan <file>`.
 
@@ -122,20 +124,44 @@ PRD rule: any quoted passage of 4 or more words in section 6b must appear in an 
    ```json
    {"ok": true, "rows": [{"median_minutes": 62.0, "n_meetings": 94}], "n": 1, "run_at": "2026-10-03T11:00:00+00:00", "query_hash": "<sha256>", "caveats": ["what to keep in mind"]}
    ```
-   Skeleton (`connectors/providers/my_source.py`):
+   Skeleton (`connectors/providers/my_source.py`). It hashes the SQL text of the library query (the same text `validate_evidence.py` hashes), and `run_query` here is a tiny demo you replace with your read-only code:
    ```python
-   import sys, json, hashlib
+   import os, sys, json, hashlib, sqlite3
    from datetime import datetime, timezone
+
+   import yaml
+
+   def load_sql(query_id):
+       queries_dir = os.environ.get("PM_QUERIES_DIR", "connectors/queries")  # set by enrich.py
+       with open(os.path.join(queries_dir, "index.yaml")) as f:
+           for q in yaml.safe_load(f)["queries"]:
+               if q["id"] == query_id:
+                   with open(os.path.join(queries_dir, q["file"])) as g:
+                       return g.read()
+       raise ValueError(f"unknown query_id '{query_id}'")
+
+   def run_query(sql, params):  # demo only: replace with your read-only, aggregate-only code
+       db = sqlite3.connect(":memory:")
+       db.execute("CREATE TABLE demo (value INTEGER)")
+       db.executemany("INSERT INTO demo VALUES (?)", [(i,) for i in range(1, 11)])
+       cur = db.execute(sql, params)
+       names = [d[0] for d in cur.description]
+       return [dict(zip(names, row)) for row in cur.fetchall()]
 
    def main():
        req = json.load(sys.stdin)
+       out = {"ok": False, "rows": [], "n": 0, "query_hash": ""}
        try:
-           rows = run_query(req["query_id"], req["params"])  # your code: read-only, aggregate only
-           out = {"ok": True, "rows": rows, "n": len(rows)}
+           sql = load_sql(req["query_id"])
+           out["query_hash"] = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+           rows = run_query(sql, req["params"])
+           if not rows or next(iter(rows[0].values())) is None:
+               out["error"] = "query returned no rows for these params"
+           else:
+               out.update(ok=True, rows=rows, n=len(rows))
        except Exception as e:  # refuse, never crash
-           out = {"ok": False, "rows": [], "n": 0, "error": str(e)}
-       out.update(run_at=datetime.now(timezone.utc).isoformat(), caveats=[],
-                  query_hash=hashlib.sha256(req["query_id"].encode()).hexdigest())
+           out["error"] = str(e)
+       out.update(run_at=datetime.now(timezone.utc).isoformat(), caveats=[])
        print(json.dumps(out))
 
    if __name__ == "__main__":
@@ -150,28 +176,34 @@ PRD rule: any quoted passage of 4 or more words in section 6b must appear in an 
      capabilities:
        - sql_readonly
    ```
-3. Add a query to `connectors/queries/index.yaml`, with its `.sql` file next to it. Set `status: reviewed` only after a person has checked the metric definition:
+3. Add a query to `connectors/queries/index.yaml` (use a new id), with its `.sql` file next to it (here `connectors/queries/demo_rows_above.sql`: `SELECT COUNT(*) AS n_rows FROM demo WHERE value > :min_value`). Each param is an object with `name`, `description` and either `format` or `allowed_values`; add an `example` request that returns rows. Set `status: reviewed` only after a person has checked the metric definition:
    ```yaml
-   - id: median_minutes_to_confirm
+   - id: demo_rows_above
      provider: my_source
-     file: median_minutes_to_confirm.sql
-     description: Median minutes to confirm a completed meeting for one segment
-     metric: median_minutes_to_confirm
-     metric_definition: Median of minutes_to_confirm over completed events of accounts in the segment
-     params: [segment]
-     value_field: median_minutes
-     n_field: n_meetings
+     file: demo_rows_above.sql
+     description: Number of demo rows above a threshold
+     metric: demo_rows_above
+     metric_definition: Count of demo rows whose value is greater than min_value
+     params:
+       - name: min_value
+         description: Rows with a value above this are counted
+         format: integer from 1 to 10
+     example:
+       question: How many demo rows are above 3?
+       params: {min_value: 3}
+     value_field: n_rows
+     n_field: n_rows
      status: reviewed
    ```
 4. Test it. Pipe a request into the script:
    ```bash
-   echo '{"question": "q", "query_id": "median_minutes_to_confirm", "params": {"segment": "smb"}}' | .venv/bin/python connectors/providers/my_source.py
+   echo '{"question": "q", "query_id": "demo_rows_above", "params": {"min_value": 3}}' | .venv/bin/python connectors/providers/my_source.py
    ```
    Then run `enrich.py` against a run (it needs `02-problem.md`) and validate:
    ```bash
-   .venv/bin/python scripts/enrich.py run runs/<run-id> --provider my_source --query-id median_minutes_to_confirm \
-     --params '{"segment": "smb"}' --question "How long does confirming take?" \
-     --claim "Median time to confirm is 62 minutes (n=94)" --supports PB-1
+   .venv/bin/python scripts/enrich.py run runs/<run-id> --provider my_source --query-id demo_rows_above \
+     --params '{"min_value": 3}' --question "How many demo rows are above 3?" \
+     --claim "{value} demo rows are above the threshold" --supports PB-1
    .venv/bin/python scripts/validate_evidence.py runs/<run-id>
    ```
 

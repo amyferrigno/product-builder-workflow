@@ -10,6 +10,7 @@
       "pattern": "^EV-\\d{3}$"
     },
     "claim": { "type": "string" },
+    "claim_template": { "type": "string" },
     "metric": { "type": "string" },
     "value": { "type": "number" },
     "segment": { "type": "string" },

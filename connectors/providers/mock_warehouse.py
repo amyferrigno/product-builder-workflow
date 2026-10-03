@@ -12,6 +12,8 @@ Request: {"question", "query_id", "params"} per schemas/provider-io.schema.json.
     under the key "__sql"; keys starting with "__" are not bound.
 Every query goes through scripts/sql_guard.py first, using pii_tables and
 data.max_rows_returned from the config path in env PM_CONFIG (default pm.config.yaml).
+A query that returns no rows, or a NULL first value, is answered with the error
+"query returned no rows for these params" (the filter matched nothing).
 A guard failure or bad request is answered with {"ok": false, "error": ...} and
 exit 0: a refusal is data, not a crash.
 """
@@ -109,6 +111,10 @@ def build_output(request: dict) -> dict:
         return out
     except (sqlite3.Error, sqlite3.Warning) as e:
         out["error"] = f"query failed: {e}"
+        return out
+
+    if not rows or next(iter(rows[0].values()), None) is None:
+        out["error"] = "query returned no rows for these params"
         return out
 
     out.update({"ok": True, "rows": rows, "n": len(rows)})

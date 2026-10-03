@@ -11,6 +11,9 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator
 
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+from validate_evidence import format_value_pct, validate_evidence
+
 REPO_ROOT = Path(__file__).parent.parent
 MOCK_REGISTRY = str(REPO_ROOT / "fixtures" / "registry.mock.yaml")
 MOCK_CONFIG = str(REPO_ROOT / "fixtures" / "pm.config.mock.yaml")
@@ -30,7 +33,7 @@ def make_queries_dir(tmp_path):
     return queries
 
 
-def enrich(tmp_path, run_dir, *extra, queries=None, claim="33% of 300 tickets", supports="PB-1"):
+def enrich(tmp_path, run_dir, *extra, queries=None, claim="{value_pct}% of {n} tickets", supports="PB-1"):
     queries = queries or make_queries_dir(tmp_path)
     cmd = [
         sys.executable, "scripts/enrich.py", "run", str(run_dir),
@@ -88,6 +91,13 @@ def test_writes_schema_valid_card_with_provider_value(tmp_path):
     assert card["period"] == "2025-H2"
     assert len(card["query_hash"]) == 64
     assert "synthetic mock warehouse data" in card["caveats"]
+    assert card["claim_template"] == "{value_pct}% of {n} tickets"
+    assert card["claim"] == f"{format_value_pct(card['value'])}% of {total} tickets"
+    assert result["value"] == card["value"] and result["n"] == total
+    assert result["claim"] == card["claim"] and result["confidence"] == "high"
+    assert card["query_hash"] == hashlib.sha256(
+        (REPO_ROOT / "connectors" / "queries" / "ticket_share_by_category.sql").read_text().encode()
+    ).hexdigest()
 
 
 def test_second_card_gets_next_id_and_second_call_uses_cache(tmp_path):
@@ -103,20 +113,86 @@ def test_second_card_gets_next_id_and_second_call_uses_cache(tmp_path):
     assert len(list((tmp_path / "cache").glob("*.json"))) == 1
 
 
-def test_claim_with_wrong_number_is_refused(tmp_path):
+def test_claim_with_literal_number_is_refused(tmp_path):
     run_dir = make_run(tmp_path)
-    code, stdout, stderr = enrich(tmp_path, run_dir, *share_args(), claim="77% of tickets")
+    code, stdout, stderr = enrich(tmp_path, run_dir, *share_args(), claim="77% of {n} tickets, {value_pct}%")
     assert code == 1
-    assert stderr.strip() == "claim number '77' does not match provider value"
+    assert stderr.strip() == "claim template must not contain literal numbers; use {value}, {value_pct} or {n}"
     assert "Traceback" not in stderr
     assert not (run_dir / "03-evidence").exists()
+    assert not (tmp_path / "cache").exists()  # refused before the provider ran
+
+
+def test_bad_templates_are_refused_with_one_line(tmp_path):
+    run_dir = make_run(tmp_path)
+    cases = {
+        "{n} tickets": "claim template must contain {value} or {value_pct}",
+        "{value} {nope}": "unknown placeholder '{nope}' in claim template",
+        "{value_pct}k tickets": "claim template must not put a magnitude word (k, m, bn, thousand, million, billion) after a number",
+        "{value}% of tickets": "% may follow only {value_pct}",
+    }
+    queries = make_queries_dir(tmp_path)
+    for claim, message in cases.items():
+        code, _, stderr = enrich(tmp_path, run_dir, *share_args(), claim=claim, queries=queries)
+        assert code == 1
+        assert stderr.strip() == message
+
+
+def test_claim_template_value_and_n_are_filled(tmp_path):
+    run_dir = make_run(tmp_path)
+    share, total = expected_share_and_total()
+    code, stdout, stderr = enrich(tmp_path, run_dir, *share_args(), claim="share {value} ({value_pct} percent) of {n}")
+    assert code == 0, stderr
+    result = json.loads(stdout)
+    assert result["claim"] == f"share {round(share, 2):g} ({format_value_pct(share)} percent) of {total}"
+    assert validate_evidence(str(run_dir)) == []
+
+
+def test_value_pct_is_refused_for_values_above_one(tmp_path):
+    run_dir = make_run(tmp_path)
+    code, _, stderr = enrich(tmp_path, run_dir, "--query-id", "median_minutes_to_confirm",
+                             "--params", '{"segment": "enterprise"}', claim="{value_pct}% of {n}")
+    assert code == 1
+    assert stderr.strip() == "{value_pct} needs a provider value between 0 and 1"
+
+
+def test_median_claim_with_value_and_n(tmp_path):
+    run_dir = make_run(tmp_path)
+    code, stdout, stderr = enrich(tmp_path, run_dir, "--query-id", "median_minutes_to_confirm",
+                                  "--params", '{"segment": "enterprise"}',
+                                  claim="median {value} minutes over {n} meetings")
+    assert code == 0, stderr
+    assert json.loads(stdout)["claim"] == "median 74 minutes over 142 meetings"
+
+
+def test_no_matching_rows_is_reported(tmp_path):
+    run_dir = make_run(tmp_path)
+    code, _, stderr = enrich(tmp_path, run_dir, "--query-id", "median_minutes_to_confirm",
+                             "--params", '{"segment": "nope"}', claim="{value} {n}")
+    assert code == 1
+    assert stderr.strip() == "provider 'mock_warehouse' refused the request: query returned no rows for these params"
+
+
+def test_non_numeric_value_does_not_echo_the_cell(tmp_path):
+    run_dir = make_run(tmp_path)
+    sql = "SELECT COUNT(*) AS n_rows, 'secret@example.invalid' AS email FROM accounts"
+    code, _, stderr = enrich(tmp_path, run_dir, "--sql", sql, "--value-field", "email", claim="{value}")
+    assert code == 1
+    assert stderr.strip() == "provider value is not a number"
+    assert "secret" not in stderr
+
+
+def test_pii_query_cannot_leak_through_value_field(tmp_path):
+    run_dir = make_run(tmp_path)
+    code, _, stderr = enrich(tmp_path, run_dir, "--sql", "SELECT MAX(email) AS e FROM customers", claim="{value}")
+    assert code == 1
+    assert "allows only COUNT aggregates" in stderr
+    assert "example.invalid" not in stderr
 
 
 def test_claim_may_use_percentage_form_and_n(tmp_path):
     run_dir = make_run(tmp_path)
-    share, total = expected_share_and_total()
-    claim = f"{round(share * 100)}% of {total} tickets"
-    code, _, stderr = enrich(tmp_path, run_dir, *share_args(), claim=claim)
+    code, _, stderr = enrich(tmp_path, run_dir, *share_args(), claim="{value_pct}% of {n} tickets")
     assert code == 0, stderr
 
 
@@ -147,7 +223,7 @@ def test_unknown_query_id(tmp_path):
 def test_missing_params_are_named(tmp_path):
     run_dir = make_run(tmp_path)
     code, stdout, stderr = enrich(tmp_path, run_dir, "--query-id", "ticket_share_by_category",
-                                  "--params", '{"category": "billing"}')
+                                  "--params", '{"category": "billing"}', claim="{value}")
     assert code == 1
     assert stderr.strip() == "missing params for 'ticket_share_by_category': period_start, period_end"
 
@@ -174,7 +250,7 @@ def test_adhoc_sql_is_low_confidence_and_saved_unreviewed(tmp_path):
     sql = "SELECT COUNT(*) AS accounts_total FROM accounts"
     with open(REPO_ROOT / "fixtures" / "mock_warehouse" / "accounts.csv", newline="") as f:
         total = len(list(csv.DictReader(f)))
-    code, stdout, stderr = enrich(tmp_path, run_dir, "--sql", sql, queries=queries, claim=f"{total} accounts")
+    code, stdout, stderr = enrich(tmp_path, run_dir, "--sql", sql, queries=queries, claim="{value} accounts")
     assert code == 0, stderr
     card = json.loads(Path(json.loads(stdout)["path"]).read_text())
     assert card["confidence"] == "low"
@@ -186,11 +262,12 @@ def test_adhoc_sql_is_low_confidence_and_saved_unreviewed(tmp_path):
     entry = next(q for q in library if q["id"] == card["query_id"])
     assert entry["status"] == "unreviewed"
     assert entry["provider"] == "mock_warehouse"
-    assert (queries / entry["file"]).read_text().strip() == sql
+    assert (queries / entry["file"]).read_text() == sql
+    assert validate_evidence(str(run_dir), str(queries)) == []
     assert len(library) == 4
 
     # Running it again does not duplicate the library entry.
-    enrich(tmp_path, run_dir, "--sql", sql, queries=queries, claim=f"{total} accounts")
+    enrich(tmp_path, run_dir, "--sql", sql, queries=queries, claim="{value} accounts")
     assert len(yaml.safe_load((queries / "index.yaml").read_text())["queries"]) == 4
 
 
@@ -218,7 +295,7 @@ def test_repo_query_library_and_registry_are_untouched_by_tests(tmp_path):
     real_queries = REPO_ROOT / "connectors" / "queries"
     before = dir_hash(real_queries)
     run_dir = make_run(tmp_path)
-    code, _, stderr = enrich(tmp_path, run_dir, "--sql", "SELECT COUNT(*) AS c FROM accounts", claim="60 accounts")
+    code, _, stderr = enrich(tmp_path, run_dir, "--sql", "SELECT COUNT(*) AS c FROM accounts", claim="{value} accounts")
     assert code == 0, stderr
     code, _, stderr = enrich(tmp_path, run_dir, *share_args(), queries=real_queries)
     assert code == 0, stderr

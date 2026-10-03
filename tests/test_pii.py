@@ -79,7 +79,7 @@ def test_plain_count_not_flagged():
 
 
 def test_long_plain_digit_run_not_flagged():
-    assert pii.scan("total 1234567890 events") == []
+    assert pii.scan("total 1234567890123 events") == []
 
 
 def test_sha256_hex_not_flagged():
@@ -101,6 +101,53 @@ def test_id_followed_by_count_not_flagged():
 
 def test_year_range_not_flagged():
     assert pii.scan("fiscal 2026-2027 plan") == []
+
+
+# Non-ASCII emails
+
+@pytest.mark.parametrize("email", ["josé@example.com", "müller.özil@beispiel.de", "名前@例え.jp"])
+def test_non_ascii_email_detected_and_scrubbed(email):
+    text = f"write to {email} today"
+    assert pii.scan(text) == [{"type": "email", "match": email, "line": 1}]
+    assert pii.scrub(text) == "write to [email] today"
+
+
+@pytest.mark.parametrize("text", ["send to user@ now", "follow @handle now", "a @ b is not mail", "x@localhost"])
+def test_email_look_alikes_not_flagged(text):
+    assert pii.scan(text) == []
+
+
+# Typographic dashes and bare 10/11 digit phones
+
+@pytest.mark.parametrize("phone", ["555\u2013010\u20139999", "555\u2011010\u20119999", "555\u2212010\u22129999", "5550109999", "15550109999"])
+def test_typographic_dash_and_bare_phones_detected(phone):
+    text = f"call {phone} now"
+    assert pii.scan(text) == [{"type": "phone", "match": phone, "line": 1}]
+    assert pii.scrub(text) == "call [phone] now"
+
+
+@pytest.mark.parametrize("text", [
+    "on 2026-09-12 ok",
+    "on 06-03-2026 ok",
+    "on 03-06-2026 ok",
+    "on 06/03/2026 ok",
+    "on 06\u201303\u20132026 ok",
+    "see EV-003",
+    "see REQ-001",
+    "12450 meetings",
+    "hash 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 end",
+    "upgrade to 10.20.30",
+    "takes 3-4 days",
+    "pi is 3.14159265",
+    "value 1234567890.5 here",
+    "revenue 1 000 000 total",
+    "revenue 1,000,000 total",
+    "revenue 1 000 000 000 total",
+    "id 123456789 here",
+    "id 123456789012 here",
+])
+def test_phone_look_alikes_not_flagged(text):
+    assert pii.scan(text) == []
 
 
 # Config-driven terms
@@ -126,6 +173,36 @@ def test_company_terms_kept_when_allowed():
 
 def test_people_scrubbed_even_when_companies_allowed():
     assert pii.scrub("Jordan Testperson", TERMS_CFG, allow_company_names=True) == "[name]"
+
+
+def test_people_term_matches_last_first_form():
+    cfg = {"people": ["Jordan Testperson"], "companies": []}
+    assert pii.scrub("ask Testperson, Jordan today", cfg) == "ask [name] today"
+    assert pii.scrub("ask TESTPERSON,Jordan today", cfg) == "ask [name] today"
+
+
+def test_people_term_matches_across_line_break_and_extra_spaces():
+    cfg = {"people": ["Jordan Testperson"], "companies": []}
+    assert pii.scrub("ask Jordan\nTestperson today", cfg) == "ask [name] today"
+    assert pii.scrub("ask Jordan   Testperson today", cfg) == "ask [name] today"
+    assert types("ask Jordan\n  Testperson", pii_terms=cfg) == ["term"]
+
+
+@pytest.mark.parametrize("suffixed", ["Northwind Example Ltd", "Northwind Example ltd.", "Northwind Example INC", "Northwind Example LLC"])
+def test_company_term_matches_with_and_without_legal_suffix(suffixed):
+    cfg = {"people": [], "companies": ["Northwind Example Ltd"]}
+    assert pii.scrub(f"at {suffixed} today", cfg) == "at [company] today"
+    assert pii.scrub("at Northwind Example today", cfg) == "at [company] today"
+
+
+def test_company_term_other_suffixes_in_list():
+    cfg = {"people": [], "companies": ["Acme Fake GmbH"]}
+    assert pii.scrub("Acme Fake and Acme Fake GmbH and Acme Fake Corp", cfg) == "[company] and [company] and [company]"
+
+
+def test_unrelated_phrases_sharing_one_word_not_flagged():
+    cfg = {"people": ["Jordan Testperson"], "companies": ["Northwind Example Ltd"]}
+    assert pii.scan("Jordan river and Northwind traders and Testperson alone", cfg) == []
 
 
 def test_no_terms_means_no_term_findings():

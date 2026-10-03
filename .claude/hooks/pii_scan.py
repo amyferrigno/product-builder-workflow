@@ -19,13 +19,13 @@ WATCHED = ("04-anecdotes.json", "04-anecdotes.candidates.json", "prd.md")
 
 
 def is_watched(file_path: str, project_dir: str) -> bool:
-    """True if the path is runs/<run>/<watched file> (case-insensitive on 'runs')."""
+    """True if the path is runs/<run>/<watched file> (case-insensitive on the whole path)."""
     p = Path(file_path)
     if not p.is_absolute():
         p = Path(project_dir) / p
     parts = Path(os.path.normpath(str(p))).parts
     for i, part in enumerate(parts):
-        if part.lower() == "runs" and i + 3 == len(parts) and parts[i + 2] in WATCHED:
+        if part.lower() == "runs" and i + 3 == len(parts) and parts[i + 2].lower() in WATCHED:
             return True
     return False
 

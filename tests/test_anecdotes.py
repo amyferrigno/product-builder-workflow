@@ -268,3 +268,36 @@ def test_word_count_ignores_trailing_ellipsis():
     assert cut and anecdotes.word_count(quote) == 40
     quote, cut = anecdotes.truncate_quote(" ".join(["w"] * 40))
     assert not cut and not quote.endswith("…")
+
+
+STUB_ANECDOTE_PROVIDER = '''
+import json, sys
+json.load(sys.stdin)
+row = {
+    "source": "zendesk", "source_ref": "ticket/stub1", "date": "2026-06-03", "segment": "SMB",
+    "persona": "Office manager", "pain": "Scheduling is slow",
+    "quote": "write to josé@example.com or call 555–010–9999 about scheduling",
+    "sentiment": -1, "consent_ok": True,
+}
+print(json.dumps({"ok": True, "rows": [row], "n": 1, "run_at": "2026-01-01T00:00:00+00:00",
+                  "query_hash": "abc", "caveats": []}))
+'''
+
+
+def test_non_ascii_email_and_typographic_dash_phone_do_not_reach_candidates(tmp_path):
+    script = tmp_path / "stub_provider.py"
+    script.write_text(STUB_ANECDOTE_PROVIDER, encoding="utf-8")
+    registry = tmp_path / "registry.yaml"
+    registry.write_text(yaml.safe_dump({"providers": [{
+        "id": "stub_anecdotes", "kind": "script", "enabled": True,
+        "command": f"python {script}", "capabilities": ["anecdotes"],
+    }]}))
+    run_dir = make_run(tmp_path)
+    code, _, stderr = pull(tmp_path, run_dir, "scheduling", provider="stub_anecdotes", registry=str(registry))
+    assert code == 0, stderr
+    records = candidates_of(run_dir)
+    assert len(records) == 1
+    text = (run_dir / "04-anecdotes.candidates.json").read_text()
+    assert "josé@example.com" not in text
+    assert "555–010–9999" not in text
+    assert "[email]" in records[0]["quote"] and "[phone]" in records[0]["quote"]

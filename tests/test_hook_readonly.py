@@ -132,3 +132,56 @@ def test_mcp_sql_with_leading_comment_is_blocked():
 def test_mcp_lowercase_select_aggregate_is_allowed():
     code, _, stderr = run_hook({"tool_name": "mcp__w__q", "tool_input": {"query": "select count(*) from tickets"}})
     assert code == 0 and stderr == ""
+
+
+def mcp(tool_input):
+    return {"tool_name": "mcp__w__q", "tool_input": tool_input}
+
+
+def test_mcp_plain_text_starting_with_sql_word_is_allowed():
+    for text in ("Update on scheduling complaints", "Select the best themes", "Drop in customer comments", "Delete requests from users"):
+        code, _, stderr = run_hook(mcp({"query": text}))
+        assert code == 0 and stderr == "", text
+
+
+def test_mcp_update_statement_is_blocked():
+    code, _, stderr = run_hook(mcp({"query": "update accounts set plan = 'x'"}))
+    assert code == 2 and "forbidden keyword: UPDATE" in stderr
+
+
+def test_mcp_nested_params_sql_is_blocked():
+    code, _, stderr = run_hook(mcp({"params": {"sql": "drop table t"}}))
+    assert code == 2 and "forbidden keyword: DROP" in stderr
+
+
+def test_mcp_sql_query_key_any_case_is_blocked():
+    for key in ("SQL_QUERY", "sql_query", "SQL", "Statement"):
+        code, _, stderr = run_hook(mcp({key: "delete from t"}))
+        assert code == 2, key
+        assert "forbidden keyword: DELETE" in stderr
+
+
+def test_mcp_nested_plain_text_is_allowed():
+    code, _, stderr = run_hook(mcp({"params": {"query": "Update on scheduling complaints"}}))
+    assert code == 0 and stderr == ""
+
+
+def test_mcp_statement_shapes_are_blocked():
+    for text in (
+        "with x as (select 1) delete from t",
+        "INSERT INTO t VALUES (1)",
+        "MERGE INTO t USING s ON t.id = s.id",
+        "ALTER TABLE t ADD COLUMN c int",
+        "CREATE TABLE t (a int)",
+        "TRUNCATE TABLE t",
+        "truncate t",
+        "GRANT SELECT ON t TO bob",
+        "REPLACE INTO t VALUES (1)",
+        "ATTACH 'x.db' AS other",
+        "PRAGMA writable_schema",
+        "SELECT COUNT(*) FROM t; DROP TABLE t",
+        "-- note\nDROP TABLE t",
+    ):
+        code, _, stderr = run_hook(mcp({"sql": text}))
+        assert code == 2, text
+        assert "Traceback" not in stderr

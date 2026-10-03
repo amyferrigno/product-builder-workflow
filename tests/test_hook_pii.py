@@ -100,3 +100,17 @@ def test_all_findings_listed_one_per_line(tmp_path):
     assert code == 2
     assert err.splitlines()[0] == "PII found:"
     assert len(err.strip().splitlines()) == 3
+
+
+def test_mixed_case_file_names_still_scanned(tmp_path):
+    p = make(tmp_path, "runs/r1/Prd.md", "reach a@example.invalid\n")
+    code, _, err = call(p)
+    assert code == 2 and "a@example.invalid" in err
+    q = make(tmp_path, "runs/r1/04-Anecdotes.JSON", '[{"quote": "mail a@example.invalid"}]\n')
+    code, _, err = call(q)
+    assert code == 2 and "a@example.invalid" in err
+
+
+def test_mixed_case_unrelated_name_still_allowed(tmp_path):
+    p = make(tmp_path, "runs/r1/Notes.md", "a@example.invalid\n")
+    assert call(p)[0] == 0

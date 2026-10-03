@@ -3,9 +3,11 @@
 PreToolUse hook that blocks mutating or non-aggregate SQL.
 Reads the tool call from stdin as JSON.
   - Bash: looks for a --sql argument in tool_input.command (shlex.split, tolerant of failure).
-  - mcp__*: checks the string fields sql, query and statement in tool_input, but only when the
-    text begins with an SQL statement keyword or has a second statement after ';'
-    (plain-text search queries are ignored).
+  - mcp__*: checks the string fields sql, query, statement and sql_query (key names matched
+    case-insensitively) in tool_input and in any dict nested one level inside it (for example
+    tool_input.params.sql), but only when a statement in the text parses as SQL: the first keyword
+    must be followed by SQL-shaped words (SELECT ... FROM, UPDATE t SET, DELETE FROM, DROP TABLE, ...).
+    Plain-text search queries such as "Update on scheduling complaints" are ignored.
 Runs scripts/sql_guard.py check_sql (imported by path). Standard library only, so
 pii_tables and max_rows_returned are read from $CLAUDE_PROJECT_DIR/pm.config.yaml with a
 tolerant line parser (defaults: no PII tables, 500 rows if the file is unreadable).
@@ -21,21 +23,51 @@ import importlib.util
 from pathlib import Path
 
 PROJECT_DIR = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path(__file__).resolve().parent.parent.parent)
-MCP_SQL_FIELDS = ("sql", "query", "statement")
-SQL_START = re.compile(
-    r"^(SELECT|WITH|INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|GRANT|TRUNCATE|REPLACE|ATTACH|PRAGMA)\b",
-    re.IGNORECASE,
+MCP_SQL_FIELDS = ("sql", "query", "statement", "sql_query")
+_IDENT = r"[\w.\"`\[\]]+"
+_OBJECTS = (
+    r"(?:OR|TABLE|TEMP|TEMPORARY|VIEW|MATERIALIZED|INDEX|UNIQUE|SCHEMA|DATABASE|USER|ROLE|FUNCTION|PROCEDURE"
+    r"|TRIGGER|SEQUENCE|EXTENSION|TYPE|DOMAIN|POLICY|VIRTUAL|EXTERNAL|STAGE|WAREHOUSE|COLUMN)"
 )
+SQL_STATEMENT_PATTERNS = [
+    re.compile(p, re.IGNORECASE | re.DOTALL)
+    for p in (
+        r"^SELECT\b.+?\bFROM\b",
+        r"^WITH\s+(?:RECURSIVE\s+)?" + _IDENT + r"\s+AS\s*\(",
+        r"^INSERT\s+(?:OR\s+\w+\s+)?INTO\b",
+        r"^UPDATE\s+" + _IDENT + r"(?:\s+(?:AS\s+)?\w+)?\s+SET\b",
+        r"^DELETE\s+FROM\b",
+        r"^MERGE\s+INTO\b",
+        r"^(?:DROP|ALTER|CREATE)\s+" + _OBJECTS + r"\b",
+        r"^TRUNCATE\s+(?:TABLE\s+\S|" + _IDENT + r"\s*(?:$|CASCADE\b|RESTART\b|CONTINUE\b))",
+        r"^GRANT\b.+?\b(?:ON|TO)\b",
+        r"^REPLACE\s+INTO\b",
+        r"^ATTACH\s+(?:DATABASE\s+)?(?:['\"]|:memory:|\S+\s+AS\s+\w)",
+        r"^PRAGMA\s+" + _IDENT,
+    )
+]
 
 
 def looks_like_sql(text: str) -> bool:
-    """True if the text begins with an SQL statement keyword or has a second statement after ';'."""
+    """True if any ';'-separated statement in the text parses as the start of an SQL statement."""
     stripped = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
-    stripped = re.sub(r"--[^\n]*", " ", stripped).strip()
-    if SQL_START.match(stripped):
-        return True
-    head, sep, tail = stripped.partition(";")
-    return bool(sep and tail.strip())
+    stripped = re.sub(r"--[^\n]*", " ", stripped)
+    for statement in stripped.split(";"):
+        statement = statement.strip()
+        if statement and any(p.match(statement) for p in SQL_STATEMENT_PATTERNS):
+            return True
+    return False
+
+
+def mcp_sql_texts(tool_input: dict):
+    """String values of the SQL-like fields in tool_input and in dicts nested one level inside it."""
+    scopes = [tool_input] + [v for v in tool_input.values() if isinstance(v, dict)]
+    found = []
+    for scope in scopes:
+        for key, value in scope.items():
+            if isinstance(key, str) and key.lower() in MCP_SQL_FIELDS and isinstance(value, str):
+                found.append(value)
+    return found
 
 
 def load_check_sql():
@@ -124,10 +156,7 @@ def main():
             if isinstance(command, str) and "--sql" in command:
                 queries = sql_from_bash(command)
         elif tool_name.startswith("mcp__"):
-            queries = [
-                tool_input[f] for f in MCP_SQL_FIELDS
-                if isinstance(tool_input.get(f), str) and looks_like_sql(tool_input[f])
-            ]
+            queries = [text for text in mcp_sql_texts(tool_input) if looks_like_sql(text)]
         if not queries:
             sys.exit(0)
 

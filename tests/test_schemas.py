@@ -5,6 +5,8 @@ import yaml
 from pathlib import Path
 from jsonschema import Draft202012Validator
 
+import sys
+
 
 def load_schema(schema_name):
     """Load a schema from the schemas directory."""
@@ -307,3 +309,129 @@ def test_invalid_registry_mcp_no_server_fails():
         for e in errors
     )
     assert error_at_providers, f"Expected error at providers.0 containing 'server' required, got: {[(e.absolute_path, e.message) for e in errors]}"
+
+
+def test_valid_prd_audit_passes():
+    """Check that valid prd-audit sample passes validation."""
+    schema = load_schema("prd-audit")
+    repo_root = Path(__file__).parent.parent
+    sample_path = repo_root / "tests" / "samples" / "valid" / "prd-audit.json"
+    data = load_sample(sample_path)
+
+    validator = Draft202012Validator(schema)
+    errors = list(validator.iter_errors(data))
+    assert len(errors) == 0, f"Valid sample should pass: {[e.message for e in errors]}"
+
+
+def test_invalid_prd_audit_no_fix_fails():
+    """Check that prd-audit with missing fix for score < 3 fails."""
+    schema = load_schema("prd-audit")
+    repo_root = Path(__file__).parent.parent
+    sample_path = repo_root / "tests" / "samples" / "invalid" / "prd-audit-no-fix.json"
+    data = load_sample(sample_path)
+
+    validator = Draft202012Validator(schema)
+    errors = list(validator.iter_errors(data))
+    assert len(errors) > 0, "Invalid sample should fail validation"
+    # Check that there's an error with 'fix' or 'sections' in message
+    error_at_dim = any(
+        ".".join(str(p) for p in e.absolute_path) == "dimensions.0" and
+        ("'fix' is a required property" in e.message or "'sections' is a required property" in e.message)
+        for e in errors
+    )
+    assert error_at_dim, f"Expected error at dimensions.0 with fix/sections required, got: {[(e.absolute_path, e.message) for e in errors]}"
+
+
+def test_valid_state_with_audit_loops_passes():
+    """Check that state with audit_loops passes validation."""
+    schema = load_schema("state")
+    repo_root = Path(__file__).parent.parent
+    sample_path = repo_root / "tests" / "samples" / "valid" / "state-with-audit-loops.json"
+    data = load_sample(sample_path)
+
+    validator = Draft202012Validator(schema)
+    errors = list(validator.iter_errors(data))
+    assert len(errors) == 0, f"Valid sample should pass: {[e.message for e in errors]}"
+
+
+def test_invalid_state_audit_loops_negative_fails():
+    """Check that state with negative audit_loops value fails."""
+    schema = load_schema("state")
+    repo_root = Path(__file__).parent.parent
+    sample_path = repo_root / "tests" / "samples" / "invalid" / "state-audit-loops-negative.json"
+    data = load_sample(sample_path)
+
+    validator = Draft202012Validator(schema)
+    errors = list(validator.iter_errors(data))
+    assert len(errors) > 0, "Invalid sample should fail validation"
+    # Check that there's an error at audit_loops.prd with validator minimum
+    error_at_prd = any(
+        ".".join(str(p) for p in e.absolute_path) == "audit_loops.prd" and
+        e.validator == "minimum"
+        for e in errors
+    )
+    assert error_at_prd, f"Expected error at audit_loops.prd with validator minimum, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+
+
+def test_prd_audit_rubric_is_valid():
+    """Check that the PRD audit rubric has correct structure."""
+    repo_root = Path(__file__).parent.parent
+    rubric_path = repo_root / "templates" / "audit-prd.rubric.yaml"
+
+    with open(rubric_path) as f:
+        rubric = yaml.safe_load(f)
+
+    # Check that rubric has dimensions list
+    assert "dimensions" in rubric, "Rubric must have 'dimensions' key"
+    dimensions = rubric["dimensions"]
+
+    # Check we have exactly 12 dimensions
+    assert len(dimensions) == 12, f"Expected 12 dimensions, got {len(dimensions)}"
+
+    # Expected dimension ids
+    expected_ids = {
+        "problem_clarity",
+        "evidence_strength",
+        "strategic_fit",
+        "success_metrics",
+        "scope_discipline",
+        "feasibility",
+        "testability",
+        "risk_coverage",
+        "traceability",
+        "ai_appropriateness",
+        "ai_ux_uncertainty",
+        "ai_eval_plan"
+    }
+
+    actual_ids = {dim.get("id") for dim in dimensions}
+    assert actual_ids == expected_ids, f"Dimension IDs mismatch. Expected {expected_ids}, got {actual_ids}"
+
+    # Check blocking dimensions
+    blocking_ids = {dim.get("id") for dim in dimensions if dim.get("blocking")}
+    expected_blocking = {
+        "problem_clarity",
+        "success_metrics",
+        "testability",
+        "traceability",
+        "ai_appropriateness",
+        "ai_ux_uncertainty",
+        "ai_eval_plan"
+    }
+    assert blocking_ids == expected_blocking, f"Blocking dimensions mismatch. Expected {expected_blocking}, got {blocking_ids}"
+
+    # Check blocking dimensions have minimum 3
+    for dim in dimensions:
+        if dim.get("blocking"):
+            assert dim.get("minimum") == 3, f"Blocking dimension {dim.get('id')} should have minimum 3, got {dim.get('minimum')}"
+
+    # Check each dimension has score definitions for 1-4
+    for dim in dimensions:
+        dim_id = dim.get("id")
+        scores = dim.get("scores")
+        assert scores, f"Dimension {dim_id} has no scores"
+        assert len(scores) == 4, f"Dimension {dim_id} should have 4 scores, got {len(scores)}"
+        for score_num in [1, 2, 3, 4]:
+            assert score_num in scores, f"Dimension {dim_id} missing score {score_num}"
+            assert isinstance(scores[score_num], str), f"Dimension {dim_id} score {score_num} should be a string"
+            assert len(scores[score_num]) > 0, f"Dimension {dim_id} score {score_num} is empty"

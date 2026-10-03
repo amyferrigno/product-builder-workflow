@@ -1,0 +1,78 @@
+{
+  "run_id": "2026-01-15-ai-clear-fit",
+  "prd_hash": "574dd71969001543a88800a555462736e675599d22d194c10722c9abfbfa9a7e",
+  "ai_feature": true,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 3,
+      "justification": "Specific problem with volume, effort and wait figures from the extraction (M-1, M-2, M-7), stated apart from the LLM solution; no alternative hypotheses."
+    },
+    {
+      "id": "evidence_strength",
+      "score": 2,
+      "justification": "The case rests on figures stated in the meeting (M-1 to M-7): no provider data, no evidence cards, no anecdote records and no confidence levels per figure. 6c lists the gaps and how to close them, but evidence that was only spoken is a claim, so this is a 2.",
+      "fix": "Close the gaps in 6c: configure a data provider and an anecdote source, re-run the figures through them, and attach a confidence level to each figure.",
+      "sections": [
+        "6",
+        "6a",
+        "6b"
+      ]
+    },
+    {
+      "id": "strategic_fit",
+      "score": 3,
+      "justification": "Cost savings and faster fulfilment are stated and cited (M-3, S-2); the notes give no deadline or wider strategy and the PRD says so."
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "One primary metric (MET-001) with the 80% target from the notes (M-6), a known baseline of fully manual parsing, three guardrails and instrumentation."
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Non-goals in section 7 and in/out lists in section 13, anchored on human review of every parse (R-1)."
+    },
+    {
+      "id": "feasibility",
+      "score": 3,
+      "justification": "Data readiness (M-4), the 4 week MVP estimate (M-8) and open data-quality and cost questions are listed as dependencies and open questions."
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All eight requirements have Given/When/Then criteria, including a fallback and an unparseable-input case."
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Misparse, drift, sparse types, rubber-stamping and unverified evidence each carry a mitigation."
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Claims cite extraction IDs, REQ and MET IDs are numbered, numbers in sections 2, 3 and 6 trace to the extraction, and the decision log states that the extraction has no decision items."
+    },
+    {
+      "id": "ai_appropriateness",
+      "score": 3,
+      "justification": "A1 restates the five gates with citations, notes the data-quality caveat on gate 3 and finds no red flags; alternatives to a fine-tuned model are only briefly compared."
+    },
+    {
+      "id": "ai_ux_uncertainty",
+      "score": 3,
+      "justification": "A5 to A7 give confidence flags, full reviewer control, a manual fallback and explicit never-do constraints."
+    },
+    {
+      "id": "ai_eval_plan",
+      "score": 3,
+      "justification": "A8 has four weighted dimensions on a 1 to 4 scale, must-pass thresholds, and a golden set of good, bad, edge and failure cases with a 50 or more target; weights are marked as proposals."
+    }
+  ],
+  "hallucination_check": {
+    "unsupported_numbers": [],
+    "unsupported_quotes": [],
+    "unsupported_decisions": []
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "run_id": "test-run-001",
+  "prd_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 3,
+      "justification": "Problem is clearly stated and solution-agnostic"
+    },
+    {
+      "id": "evidence_strength",
+      "score": 3,
+      "justification": "Multiple data sources and anecdotes with confidence levels"
+    },
+    {
+      "id": "strategic_fit",
+      "score": 4,
+      "justification": "Excellent alignment with strategic goals"
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "Primary metric with target and baseline defined"
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Clear MVP scope with explicit non-goals"
+    },
+    {
+      "id": "feasibility",
+      "score": 3,
+      "justification": "Feasible with identified data sources"
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All requirements have Given/When/Then acceptance criteria"
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Key risks identified with mitigations"
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "All claims traced to evidence or extraction IDs"
+    }
+  ],
+  "hallucination_check": {}
+}

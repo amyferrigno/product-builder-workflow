@@ -21,8 +21,8 @@ All tests must pass before merging. Schema validation is automatic.
 See [planning.md](planning.md) for the full roadmap and status.
 
 - **M0** (done): Scaffold—repo layout, config, schemas, validator, tests.
-- **M1** (current): Extraction + problem framing.
-- **M2**: PRD writer + auditor.
+- **M1** (done): Extraction + problem framing.
+- **M2** (current): PRD writer + auditor.
 - **M3**: Data enrichment.
 - **M4**: Customer anecdotes.
 - **M5**: UX design.
@@ -57,6 +57,32 @@ Supports `.md`, `.txt`, `.docx`, and stdin. Creates `runs/<date>-<slug>/` with n
 ```
 
 Both exit 1 on errors, print one error per line. Extraction validator enforces that all cited lines are non-blank. Problem validator also checks AI verdict logic.
+
+## Running the Workflow (M2: PRD, audit, approval)
+
+Commands (skills in `.claude/skills/`):
+
+- `/pm-prd <path-or-paste>`: intake, extraction, problem framing, PRD draft, validation, audit, revision loop (up to `audit.max_revision_loops`), then stops at Human Gate A with a summary.
+- `/pm-audit prd <run_dir>`: audit an existing or hand-written PRD in a run folder.
+- `/pm-approve prd <run-id> [override reason]`: human only. Approves the PRD, tied to its hash.
+
+Scripts:
+
+```bash
+.venv/bin/python scripts/validate_prd.py runs/<run-id>/       # structure, IDs, citations, number tracing
+.venv/bin/python scripts/render_audit.py runs/<run-id>/       # prd.audit.json -> verdict, prd.audit.md, state.json
+.venv/bin/python scripts/audit_verdict.py runs/<run-id>/      # verdict only
+.venv/bin/python scripts/gate_summary.py runs/<run-id>/ prd   # one-screen Gate A summary
+.venv/bin/python scripts/approve.py runs/<run-id>/ prd [--override "reason"]
+.venv/bin/python scripts/check_approval.py runs/<run-id>/ prd # exit 0 only if approval matches current prd.md
+```
+
+Hooks (`.claude/settings.json`):
+
+- `guard_approvals.py` (before Write/Edit): blocks any write under `runs/*/approvals/`.
+- `validate_artifact.py` (after Write/Edit): runs `validate_prd.py` when `runs/*/prd.md` is edited and reports errors.
+
+Agents: `prd-writer` (problem framing, PRD draft, PRD revision) and `prd-auditor` (read-only, returns audit JSON). The verdict is computed by script, not by the auditor.
 
 ## Key Files
 

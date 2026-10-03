@@ -1,0 +1,53 @@
+{
+  "run_id": "test-run-001",
+  "prd_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 2,
+      "justification": "Problem statement needs clarification"
+    },
+    {
+      "id": "evidence_strength",
+      "score": 3,
+      "justification": "Multiple data sources"
+    },
+    {
+      "id": "strategic_fit",
+      "score": 3,
+      "justification": "Good alignment"
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "Metrics defined"
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Scope clear"
+    },
+    {
+      "id": "feasibility",
+      "score": 3,
+      "justification": "Feasible"
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "Testable"
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Risks covered"
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Traced"
+    }
+  ],
+  "hallucination_check": {}
+}

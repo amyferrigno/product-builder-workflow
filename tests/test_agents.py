@@ -134,7 +134,9 @@ def test_skill_file_structure():
     # Check for front matter
     assert content.startswith('---')
     lines = content.split('\n')
-    assert lines[1:4] == ['name: meeting-to-prd', 'description: Turn meeting notes into a problem statement with an AI decision', '---']
+    assert lines[1] == 'name: meeting-to-prd'
+    assert lines[2].startswith('description: ') and 'Gate A' in lines[2]
+    assert lines[3] == '---'
 
     # Check for required sections (executable steps format)
     assert "## Trigger" in content
@@ -142,3 +144,65 @@ def test_skill_file_structure():
     assert ".venv/bin/python scripts/intake.py" in content
     assert "Validate" in content
     assert "state.json" in content
+
+
+TIER_TO_MODEL = {"small": "haiku", "medium": "sonnet", "large": "opus"}
+REPO = Path(__file__).parent.parent
+
+
+def test_prd_auditor_exists_and_name():
+    path = REPO / ".claude" / "agents" / "prd-auditor.md"
+    assert path.exists(), "prd-auditor.md not found"
+    fm = parse_agent_file(path)
+    assert fm["name"] == "prd-auditor"
+    assert fm["description"]
+
+
+def test_prd_auditor_model_matches_config_tier():
+    with open(REPO / "pm.config.yaml") as f:
+        config = yaml.safe_load(f)
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "prd-auditor.md")
+    expected = TIER_TO_MODEL[config["models"]["prd_auditor"]]
+    assert fm["model"] == expected, f"prd-auditor model should be {expected}, got {fm['model']}"
+
+
+def test_prd_auditor_tools_are_read_only():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "prd-auditor.md")
+    tools = [t.strip() for t in fm["tools"].split(",")]
+    assert set(tools) == {"Read"}, f"prd-auditor tools should be exactly {{Read}}, got {set(tools)}"
+
+
+def test_prd_auditor_forbids_problem_and_notes():
+    body = (REPO / ".claude" / "agents" / "prd-auditor.md").read_text()
+    assert "Do not read `02-problem.md`" in body
+    assert "ONLY one JSON object" in body
+
+
+def test_prd_writer_has_three_modes():
+    body = (REPO / ".claude" / "agents" / "prd-writer.md").read_text()
+    for heading in ("## Mode 1: problem framing", "## Mode 2: PRD draft", "## Mode 3: PRD revision"):
+        assert heading in body
+
+
+def test_pm_approve_disables_model_invocation():
+    fm = parse_agent_file(REPO / ".claude" / "skills" / "pm-approve" / "SKILL.md")
+    assert fm["name"] == "pm-approve"
+    assert fm["disable-model-invocation"] is True
+
+
+def test_prd_audit_skill_name():
+    fm = parse_agent_file(REPO / ".claude" / "skills" / "prd-audit" / "SKILL.md")
+    assert fm["name"] == "prd-audit"
+
+
+def test_skill_files_under_200_lines():
+    for skill in ("meeting-to-prd", "prd-audit", "pm-approve"):
+        lines = (REPO / ".claude" / "skills" / skill / "SKILL.md").read_text().splitlines()
+        assert len(lines) < 200, f"{skill} SKILL.md has {len(lines)} lines"
+
+
+def test_meeting_to_prd_never_approves():
+    body = (REPO / ".claude" / "skills" / "meeting-to-prd" / "SKILL.md").read_text()
+    assert "must never run `scripts/approve.py`" in body
+    assert "shasum -a 256" in body
+    assert "audit.max_revision_loops" in body

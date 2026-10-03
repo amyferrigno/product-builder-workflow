@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PRD Audit Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "prd_hash", "ai_feature", "dimensions", "hallucination_check"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "description": "Run ID that this audit applies to"
+    },
+    "prd_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the PRD being audited"
+    },
+    "ai_feature": {
+      "type": "boolean",
+      "description": "Whether this PRD includes AI feature sections"
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "score", "justification"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Dimension ID (e.g., problem_clarity)"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Score from 1 to 4"
+          },
+          "justification": {
+            "type": "string",
+            "description": "Explanation for the score"
+          },
+          "fix": {
+            "type": "string",
+            "description": "Required when score < 3. What needs to be fixed."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "PRD section numbers affected (e.g., ['3', '6b', 'A8'])"
+          }
+        },
+        "if": {
+          "properties": {
+            "score": {
+              "enum": [1, 2]
+            }
+          }
+        },
+        "then": {
+          "required": ["fix", "sections"]
+        }
+      }
+    },
+    "hallucination_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unsupported_numbers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Numbers not found in evidence or extraction (with section)"
+        },
+        "unsupported_quotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Quotes not found in anecdotes or evidence (with section)"
+        },
+        "unsupported_decisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Decisions not found in extraction or problem.md (with section)"
+        }
+      }
+    }
+  }
+}

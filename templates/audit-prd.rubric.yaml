@@ -1,0 +1,150 @@
+scale:
+  1: Missing or fundamentally wrong
+  2: Weak, needs significant work
+  3: Solid, meets minimum standard
+  4: Excellent, exemplary
+
+dimensions:
+  - id: problem_clarity
+    name: "Problem clarity (specific, validated, solution-agnostic)"
+    blocking: true
+    minimum: 3
+    ai_only: false
+    scores:
+      1: Problem is vague, unvalidated, or conflates problem with solution.
+      2: Problem is somewhat specific but lacks validation evidence or clarity on root cause.
+      3: Problem is clearly stated, tied to validation evidence, and solution-agnostic.
+      4: Problem is precisely articulated with strong validation, clear scope boundaries, and alternative hypotheses considered.
+
+  - id: evidence_strength
+    name: "Evidence strength (data + anecdotes, gaps acknowledged)"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: No evidence, invented numbers, or anecdotes without data grounding.
+      2: Some evidence present but thin, gaps not acknowledged, or mixed sourcing credibility. Notes-only evidence (no provider data) is at most 2, even with gaps listed.
+      3: Multiple evidence sources (data and anecdotes), gaps explicitly listed, confidence levels stated. Requires at least one evidence card or anecdote record from a configured provider; evidence only spoken in a meeting never reaches 3.
+      4: Comprehensive evidence set with diverse sources, clear gap analysis, and pathways to close them.
+
+  - id: strategic_fit
+    name: "Strategic fit"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: No connection to strategy or contradicts strategic goals.
+      2: Weak or unclear connection to strategy, limited OKR alignment.
+      3: Clear strategic alignment, explicit connection to goals and roadmap.
+      4: Exemplary strategic fit with clear contribution to multiple strategic levers.
+
+  - id: success_metrics
+    name: "Success metrics (primary, guardrails, target, baseline, actionable)"
+    blocking: true
+    minimum: 3
+    ai_only: false
+    scores:
+      1: No metrics, unmeasurable metrics, or vanity metrics only.
+      2: Metric present but lacks target, timeframe, baseline, or instrumentation plan.
+      3: One primary metric with target and timeframe, guardrails defined, baseline known, instrumentation clear.
+      4: Comprehensive metric set (primary, guardrails, secondary) all with targets, baselines, instrumentation, and monitoring plan.
+
+  - id: scope_discipline
+    name: "Scope discipline (non-goals, MVP in/out)"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: Scope is undefined, unbounded, or conflates v1 with aspirational future.
+      2: Scope present but weak boundaries; non-goals list is missing or incomplete; MVP scope unclear.
+      3: Clear v1 scope with explicit in/out; non-goals list present; MVP clearly distinguished from future.
+      4: Crisp scope boundaries with detailed in/out lists, explicit rationale for MVP scope choices, and clear future phases.
+
+  - id: feasibility
+    name: "Feasibility and data readiness"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: No consideration of feasibility; data is unavailable or missing.
+      2: Feasibility unclear; data gaps or dependencies not addressed; timeline optimistic.
+      3: Feasibility assessed; data sources identified; dependencies and assumptions listed.
+      4: Detailed feasibility analysis with contingency plans; data readiness confirmed; risks mitigated.
+
+  - id: testability
+    name: "Testability (acceptance criteria per REQ)"
+    blocking: true
+    minimum: 3
+    ai_only: false
+    scores:
+      1: No acceptance criteria or criteria are unmeasurable/vague.
+      2: Some requirements have acceptance criteria but many are missing or weak (no Given/When/Then).
+      3: All requirements have clear, testable acceptance criteria in Given/When/Then format.
+      4: All requirements have detailed acceptance criteria with edge cases, data ranges, and error handling specified.
+
+  - id: risk_coverage
+    name: "Risk coverage"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: No risks identified or risks listed without mitigations.
+      2: Some risks identified with weak or incomplete mitigations.
+      3: Key risks identified with reasonable mitigations; dependencies and assumptions called out.
+      4: Comprehensive risk analysis with clear impact/probability/mitigation; contingency plans for high-impact risks.
+
+  - id: traceability
+    name: "Traceability (IDs, citations, no unsupported claims)"
+    blocking: true
+    minimum: 3
+    ai_only: false
+    scores:
+      1: No IDs used; claims are unsupported or contradicted by evidence.
+      2: Some IDs present but inconsistent; evidence citations missing for key claims.
+      3: All claims cite evidence IDs; all requirements, metrics, and evidence are numbered; no circular references.
+      4: Full traceability with all claims explicitly sourced; requirements linked to evidence and success metrics; cross-references validated.
+
+  - id: ai_appropriateness
+    name: "AI appropriateness: 5 gates honestly applied"
+    blocking: true
+    minimum: 3
+    ai_only: true
+    scores:
+      1: Gates not applied or applied dishonestly; AI is a poor fit for the problem.
+      2: Gates applied with weak reasoning; some red flags or failed gates downplayed.
+      3: Gates honestly applied; gate results match the problem constraints; red flags considered.
+      4: Comprehensive gate analysis with clear reasoning; trade-offs between gate results explicitly discussed; alternative approaches evaluated.
+
+  - id: ai_ux_uncertainty
+    name: "AI UX for uncertainty: trust/control/recovery"
+    blocking: true
+    minimum: 3
+    ai_only: true
+    scores:
+      1: No consideration of uncertainty in UX; no human control or recovery path.
+      2: Uncertainty acknowledged but UX design weak; limited user control or escalation paths.
+      3: Clear UX patterns for uncertainty (confidence disclosure, user control, error recovery); explicit constraints on what AI will not do.
+      4: Exemplary UX with graduated confidence display, granular user control, clear recovery, and constraints well-integrated into the experience.
+
+  - id: ai_eval_plan
+    name: "AI eval plan quality"
+    blocking: true
+    minimum: 3
+    ai_only: true
+    scores:
+      1: No eval plan or plan is unexecutable.
+      2: Eval plan present but lacks golden set, weights, or must-pass thresholds; insufficient coverage.
+      3: Clear eval plan with dimensions, rubrics, weights, must-pass thresholds, and 50+ golden set cases planned.
+      4: Comprehensive eval plan with diverse rubric dimensions, balanced weights, clear thresholds, and golden set built and validated before launch.
+
+verdict_rules: |
+  A PRD is FAIL if:
+    - Any blocking dimension (problem_clarity, success_metrics, testability, traceability, and if ai_feature is true then ai_appropriateness, ai_ux_uncertainty, ai_eval_plan) scores below 3.
+    - Any dimension scores 1 (missing/wrong).
+    - Any hallucination list (unsupported_numbers, unsupported_quotes, unsupported_decisions) is non-empty.
+    - A required dimension is missing.
+    - The prd_hash does not match the current PRD.
+
+  A PRD is PASS_WITH_RISK if all blocking dimensions are 3+ and no dimension scores 1, but at least one dimension scores 2.
+
+  Otherwise (all non-blocking dimensions are 3+, blocking are 3+, none score 1, no hallucinations), the verdict is PASS.

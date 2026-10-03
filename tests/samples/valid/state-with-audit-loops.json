@@ -1,0 +1,24 @@
+{
+  "run_id": "run-001",
+  "stage": "stage1",
+  "status": "in_progress",
+  "verdicts": {
+    "prd": null,
+    "ux": null
+  },
+  "artifact_hashes": {
+    "extraction": "hash-001",
+    "problems": "hash-002"
+  },
+  "approval_hashes": {
+    "prd": null,
+    "ux": null,
+    "tickets": null
+  },
+  "jira_keys": {},
+  "updated_at": "2026-10-03T10:00:00Z",
+  "audit_loops": {
+    "prd": 1,
+    "ux": 0
+  }
+}

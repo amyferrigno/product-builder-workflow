@@ -27,14 +27,17 @@ This file documents how we build and maintain this agentic PM tool.
 
 ## Repo Layout
 
-- `.claude/agents/`: Agent specs (notes-extractor, prd-writer, etc.)
-- `.claude/skills/`: Orchestration skills (e.g., `/pm-prd` for intake → extraction → problem framing)
+- `.claude/agents/`: notes-extractor, prd-writer (3 modes), prd-auditor (read-only)
+- `.claude/skills/`: `/pm-prd` (meeting-to-prd), `/pm-audit` (prd-audit), `/pm-approve` (human only)
+- `.claude/hooks/`: guard_approvals (blocks writes under approvals/), validate_artifact (runs the PRD validator)
 - `connectors/`: Registry, queries, integrations (M3+)
-- `schemas/`: JSON Schema for handoff formats (extraction, problem, PRD, etc.)
-- `scripts/`: intake.py, ai_gates.py, validators
-- `templates/`: problem.md, ai-gates.md, PRD template (M2+)
-- `fixtures/`: Synthetic meeting notes with golden outputs for testing
+- `schemas/`: JSON Schema for handoff formats (extraction, problem, PRD audit, state, etc.)
+- `scripts/`: intake, validators (extraction, problem, PRD), render_audit/audit_verdict, approve/check_approval, gate_summary
+- `templates/`: problem.md, ai-gates.md, prd.md, prd-ai-addendum.md, audit-prd.rubric.yaml
+- `fixtures/`: Synthetic meeting notes with golden outputs (golden PRDs and audits for three; `bad-prd/` must fail)
 - `tests/`, `runs/`: Test suite and active run workspaces
+
+Only a human runs `/pm-approve`. The verdict comes from `scripts/render_audit.py`, never from a model.
 
 ## Running Tests
 

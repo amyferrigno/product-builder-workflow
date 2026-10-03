@@ -1,0 +1,73 @@
+{
+  "run_id": "2026-01-15-thin-evidence",
+  "prd_hash": "148afd36a99cb4f559d07d57955fbaf8ad4ba8b9e65902c2349c59ded1d9495c",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 2,
+      "justification": "The problem is specific and solution-agnostic, but it is UNVALIDATED: the only support is one person's daily use of the app (U-1), with no customer or usage evidence.",
+      "fix": "Validate the problem before approval: add customer feedback or usage data showing the creation flow is a burden, or keep the PRD scoped to measurement and have the approver accept the risk.",
+      "sections": [
+        "3",
+        "6a",
+        "6b"
+      ]
+    },
+    {
+      "id": "evidence_strength",
+      "score": 2,
+      "justification": "No provider data exists and the only evidence is an internal observation and the current step count (M-1); the gaps are honestly listed in 6c.",
+      "fix": "Close the gaps in 6c: collect the post-creation edit analytics (Q-4), ask customers (Q-1) and test with real users (Q-3), then attach the results as evidence cards and anecdote records.",
+      "sections": [
+        "6a",
+        "6b",
+        "6c"
+      ]
+    },
+    {
+      "id": "strategic_fit",
+      "score": 2,
+      "justification": "The PRD itself says strategic fit cannot be assessed from the notes: no trigger, deadline or strategic link is stated. The data-first decision (D-1) shows sensible sequencing but is not a connection to strategy.",
+      "fix": "State how meeting creation relates to a goal or roadmap item, or record that none exists, and have the Product Lead confirm before approval.",
+      "sections": [
+        "4"
+      ]
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "One primary metric (MET-001) with a labelled proposed target and timeframe, known baseline of five steps (M-1), two guardrails with unknown baselines stated, and instrumentation named; step count is flagged as an output measure."
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Non-goals and in/out lists are explicit, and the redesign is gated on the data review (D-1)."
+    },
+    {
+      "id": "feasibility",
+      "score": 3,
+      "justification": "Analytics this sprint (D-2) is the one dependency, and the assumptions about enough usage and the edit signal are listed."
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All three requirements have Given/When/Then criteria; no edge cases are specified."
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Four risks each carry a mitigation, including the risk that the problem is not real."
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Claims cite extraction IDs, requirements and metrics are numbered, and the numbers in sections 2, 3 and 6 trace to the extraction."
+    }
+  ],
+  "hallucination_check": {
+    "unsupported_numbers": [],
+    "unsupported_quotes": [],
+    "unsupported_decisions": []
+  }
+}

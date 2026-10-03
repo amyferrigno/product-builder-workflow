@@ -64,6 +64,22 @@
       "type": "object",
       "additionalProperties": { "type": "string" }
     },
-    "updated_at": { "type": "string" }
+    "updated_at": { "type": "string" },
+    "audit_loops": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prd": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of PRD audit loops completed"
+        },
+        "ux": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of UX audit loops completed"
+        }
+      }
+    }
   }
 }

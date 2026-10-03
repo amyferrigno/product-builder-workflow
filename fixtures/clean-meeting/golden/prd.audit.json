@@ -1,0 +1,63 @@
+{
+  "run_id": "2026-01-15-clean-meeting",
+  "prd_hash": "dc8359cb7207b2e394ca3afc071d5ed1e166e369996ac92b4638b9d289162ce5",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 3,
+      "justification": "Specific, validated by ticket, log and interview figures from the notes (M-1, M-3, M-4), and solution-agnostic in section 3; no alternative hypotheses considered."
+    },
+    {
+      "id": "evidence_strength",
+      "score": 2,
+      "justification": "All figures and interview findings come from statements in the meeting: no provider data, no evidence cards, no anecdote records and no confidence levels per figure. They are cited and sections 6a to 6c say so plainly, but evidence that was only spoken is a claim, so this is a 2.",
+      "fix": "Close the gaps in 6c: configure a data provider and an anecdote source, re-run the figures through them, and attach a confidence level to each figure.",
+      "sections": [
+        "6",
+        "6a",
+        "6b"
+      ]
+    },
+    {
+      "id": "strategic_fit",
+      "score": 3,
+      "justification": "Tied to the Q4 roadmap decision (D-1), the unsigned large deal (R-1) and churn (M-6); the notes state no wider strategy, and the PRD says so."
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "One primary metric (MET-001) with a labelled proposed target and timeframe, a known baseline (M-3), two guardrails and instrumentation from the logs."
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Non-goals in section 7 and in/out lists in section 13 both rest on decision D-2."
+    },
+    {
+      "id": "feasibility",
+      "score": 3,
+      "justification": "The 8 week estimate (M-7), API access and enterprise IT approval are listed as dependencies and assumptions."
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All six requirements have Given/When/Then criteria; edge cases are limited to the enterprise approval case."
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Five key risks each carry a mitigation, and dependencies are called out in section 14."
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Claims cite extraction IDs, requirements and metrics are numbered, and every number in sections 2, 3 and 6 traces to an extraction item."
+    }
+  ],
+  "hallucination_check": {
+    "unsupported_numbers": [],
+    "unsupported_quotes": [],
+    "unsupported_decisions": []
+  }
+}

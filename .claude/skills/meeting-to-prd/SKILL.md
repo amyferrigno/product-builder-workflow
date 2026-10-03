@@ -1,6 +1,6 @@
 ---
 name: meeting-to-prd
-description: Turn meeting notes into a problem statement with an AI decision
+description: Turn meeting notes into an audited PRD (Stage 1), stopping at Human Gate A for approval
 ---
 
 ## Trigger
@@ -58,7 +58,7 @@ Checks:
 
 ### Step 4: Problem Framing
 
-Call agent `prd-writer` with paths only:
+Call agent `prd-writer` with paths only (task line: "problem framing"):
 - Reads `01-extraction.json` from run directory
 - Reads `templates/problem.md`
 - Reads `templates/ai-gates.md`
@@ -88,50 +88,74 @@ Checks:
 - No TODO/TBD in front matter or body
 - If disagreements in extraction, "Open questions" heading present
 
-### Step 6: Update state.json
+### Step 6: Record Stage 1 hashes
 
-Update `<run_dir>/state.json`:
-- `stage`: leave as "stage1"
-- `status`: leave as "in_progress" (Stage 1 is not finished until the PRD is drafted and audited in M2)
-- `verdicts.prd`: leave as null (it holds the M2 audit verdict, not the AI verdict)
-- `artifact_hashes.extraction`: sha256 hex of `01-extraction.json`
-- `artifact_hashes.problem`: sha256 hex of `02-problem.md`
-- `updated_at`: current time, ISO-8601
-
-Then run:
+Update `<run_dir>/state.json`: set `artifact_hashes.extraction` and `artifact_hashes.problem` (sha256 hex of `01-extraction.json` and `02-problem.md`, use `shasum -a 256 <file>`), `audit_loops.prd` to `0`, `updated_at` to the current time (ISO-8601). Leave `stage` as "stage1" and `status` as "in_progress". Then run:
 ```bash
 .venv/bin/python scripts/validate_schema.py schemas/state.schema.json <run_dir>/state.json
 ```
+Stop if it exits 1.
 
-Stop if it exits 1. The AI verdict is reported only in the Step 7 summary.
+### Step 7: Evidence (M2: no providers)
 
-### Step 7: Summary
+There are no data or anecdote providers yet. Do not create `03-evidence/` or `04-anecdotes.json`. Data enrichment arrives in M3 and anecdotes in M4. The PRD must say so: "No data provider configured" in section 6a and "No anecdote provider configured" in section 6b.
 
-Print a short JSON summary:
-```json
-{
-  "success": true,
-  "run_id": "<date>-<slug>",
-  "run_dir": "<path>",
-  "extraction_items": <count>,
-  "problems_found": <count>,
-  "primary_problem": "PB-X",
-  "ai_proposed": <true|false>,
-  "ai_verdict": "<verdict or null>"
-}
+### Step 8: PRD draft
+
+Call agent `prd-writer` with paths only (task line: "PRD draft"), passing the run directory path. It reads `02-problem.md`, `01-extraction.json`, `03-evidence/` and `04-anecdotes.json` if they exist, `templates/prd.md`, `templates/prd-ai-addendum.md` and the `product` section of `pm.config.yaml`. It writes `<run_dir>/prd.md`. It never reads `00-notes/`.
+
+### Step 9: Validate PRD
+
+Run:
+```bash
+.venv/bin/python scripts/validate_prd.py <run_dir>
 ```
 
-Add note: "Problem framing complete. PRD drafting arrives in M2."
+Exit 1 prints one error per line. Send those lines to the same agent once (task line: "PRD draft", fix these errors) and run the validator again. If it still fails, set `status` to `"failed"` in `state.json`, show the errors and stop. Never retry a second time.
+
+### Step 10: Audit
+
+1. Compute the PRD hash and keep it:
+```bash
+shasum -a 256 <run_dir>/prd.md
+```
+Use the first field (64 hex characters).
+2. Call agent `prd-auditor` with three things only: the run directory path, the rubric path `templates/audit-prd.rubric.yaml` and that hash as `prd_hash`. Do not pass the writer's reasoning or `02-problem.md`.
+3. Save the auditor's final message, verbatim, to `<run_dir>/prd.audit.json`. Do not edit it. If it is not valid JSON, ask the auditor once to return the JSON only.
+4. Render and compute the verdict (the script decides, never you):
+```bash
+.venv/bin/python scripts/render_audit.py <run_dir>
+```
+It prints PASS, PASS_WITH_RISK or FAIL (exit 1 on FAIL), writes `prd.audit.md` and updates `state.json`. If it exits 2, the audit JSON is invalid: show the error and stop.
+
+### Step 11: Revision loop (only on FAIL)
+
+Read `audit.max_revision_loops` from `pm.config.yaml` (currently 2). While the verdict is FAIL and `state.json` `audit_loops.prd` is below that maximum:
+1. Add 1 to `audit_loops.prd` in `state.json`.
+2. Call agent `prd-writer` (task line: "PRD revision") with the run directory path. It edits only the flagged sections of `prd.md`.
+3. Re-run Step 9, then Step 10 (new hash, fresh auditor call, new `prd.audit.json`).
+
+Never exceed the maximum. If the verdict is still FAIL after the last allowed loop, set `status` to `"escalated"` in `state.json`, show `prd.audit.md` (reasons, fixes, hallucination findings) to the human, and stop.
+
+### Step 12: Human Gate A
+
+On PASS or PASS_WITH_RISK (`status` is now "awaiting_approval"), run:
+```bash
+.venv/bin/python scripts/gate_summary.py <run_dir> prd
+```
+Show the output to the human and STOP. Do not continue to Stage 2.
+
+The human approves with `/pm-approve prd <run-id>`. The orchestrator must never run `scripts/approve.py` itself and must never write anything under `approvals/`. A hook blocks such writes. Editing `prd.md` after approval makes the approval stale.
 
 ## Errors
 
 Return error and stop if:
 - Intake fails: file issue (not found, corrupt, unsupported type, slug invalid)
 - Content empty before creating run folder
-- Extraction validation still fails after the one retry (one error message per line)
-- Problem validation still fails after the one retry (one error message per line)
+- Extraction, problem or PRD validation still fails after the one retry (one error message per line)
 - Run folder already exists (don't overwrite)
+- `render_audit.py` exits 2 (invalid audit JSON)
 
 ## Success
 
-All seven steps complete, both validators pass, state.json updated.
+Stage 1 ends at one of: `awaiting_approval` (Gate A summary shown), `escalated` (open audit issues shown) or `failed` (validator errors shown). Every state value used is allowed by `schemas/state.schema.json`.

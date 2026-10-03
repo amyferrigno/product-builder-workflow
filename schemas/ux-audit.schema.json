@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UX Audit Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "ux_hash", "ai_feature", "dimensions"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "description": "Run ID that this audit applies to"
+    },
+    "ux_hash": {
+      "type": "string",
+      "description": "UX hash (scripts/ux_hash.py) of the UX folder being audited"
+    },
+    "ai_feature": {
+      "type": "boolean",
+      "description": "Whether the PRD includes an AI addendum"
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "score", "justification"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Dimension ID (e.g., req_coverage)"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Score from 1 to 4"
+          },
+          "justification": {
+            "type": "string",
+            "description": "Explanation for the score"
+          },
+          "fix": {
+            "type": "string",
+            "description": "Required when score < 3. What needs to be fixed."
+          },
+          "screens": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^SCR-\\d{3}$"
+            },
+            "description": "Screen ids affected (e.g., ['SCR-001'])"
+          }
+        },
+        "if": {
+          "properties": {
+            "score": {
+              "enum": [1, 2]
+            }
+          }
+        },
+        "then": {
+          "required": ["fix"]
+        }
+      }
+    }
+  }
+}

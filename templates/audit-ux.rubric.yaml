@@ -1,0 +1,85 @@
+scale:
+  1: Missing or fundamentally wrong
+  2: Weak, needs significant work
+  3: Solid, meets minimum standard
+  4: Excellent, exemplary
+
+dimensions:
+  - id: req_coverage
+    name: "Requirement coverage (every Must requirement has a screen that serves it)"
+    blocking: true
+    minimum: 3
+    ai_only: false
+    scores:
+      1: Several Must requirements have no screen, or screens do not do what the requirement says.
+      2: Every Must requirement is listed on a screen, but for some the screen only names it and does not let the user do it.
+      3: Every Must requirement has a screen where the user can really do it, and the flows show how they get there.
+      4: Every requirement (Must and others) is served end to end, the flows are short, and no screen exists without a requirement.
+
+  - id: required_states
+    name: "Required states (default, loading, empty, error, success are real and useful)"
+    blocking: true
+    minimum: 3
+    ai_only: false
+    scores:
+      1: States are missing, empty placeholders, or copies of the default state.
+      2: All states exist but several are thin, for example an error state with no way to recover.
+      3: Every state shows something different and useful, and each error or empty state tells the user what to do next.
+      4: States are specific to the screen, cover edge cases (partial data, slow network), and always offer a clear next action.
+
+  - id: ai_trust_control_recovery
+    name: "AI trust, control and recovery (low-confidence, user-edit, regenerate, explanation, escalation)"
+    blocking: true
+    minimum: 3
+    ai_only: true
+    scores:
+      1: The AI output is shown as certain, with no way to edit, retry or reach a person.
+      2: The AI states exist but are weak, for example no reason is given or the user cannot correct the result.
+      3: The user sees how sure the AI is and why, can edit or regenerate the result, and can reach a person.
+      4: Trust, control and recovery are built into the main flow, the user is never stuck, and the limits of the AI are stated plainly.
+
+  - id: accessibility
+    name: "Accessibility (contrast, labels, focus order, touch targets)"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: Text is hard to read, controls have no labels, or the page cannot be used with a keyboard.
+      2: Basic labels exist, but contrast, focus order or touch target size is weak in several places.
+      3: Text contrast is enough, every control has a label, focus order follows the reading order, and touch targets are at least 44px.
+      4: All of the above, plus clear focus styles, status changes announced to screen readers, and no information carried by colour alone.
+
+  - id: token_consistency
+    name: "Token consistency (colours, spacing, type come from the design tokens)"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: Screens ignore the design tokens and use their own colours, spacing and fonts.
+      2: Most screens use the tokens, but some values are repeated by hand or differ between screens.
+      3: All screens use the tokens for colour, spacing, radius and type, and look consistent.
+      4: Fully consistent, and the screens reuse the same patterns for the same jobs.
+
+  - id: copy_clarity
+    name: "Copy clarity (plain, short, specific text on buttons, messages and errors)"
+    blocking: false
+    minimum: null
+    ai_only: false
+    scores:
+      1: Copy is missing, confusing or full of jargon.
+      2: Copy is understandable but vague, for example "Error" or "Submit" with no detail.
+      3: Copy is plain and specific; buttons say what they do and errors say what went wrong and what to do.
+      4: Copy is consistent across screens, in one tone, and helps the user at the moment they need it.
+
+verdict_rules: |
+  A UX is FAIL if:
+    - The script checks (validate_ux.py) report any error. Script facts beat model scores.
+    - Any blocking dimension (req_coverage, required_states, and if ai_feature is true then ai_trust_control_recovery) scores below 3.
+    - Any dimension scores 1 (missing/wrong).
+    - A required dimension is missing or listed twice.
+    - The ux_hash does not match the current UX folder.
+    - The ai_feature flag does not match the PRD.
+
+  A UX is PASS_WITH_RISK if all blocking dimensions are 3+ and no dimension scores 1, but at least one dimension scores 2.
+
+  Otherwise the verdict is PASS.

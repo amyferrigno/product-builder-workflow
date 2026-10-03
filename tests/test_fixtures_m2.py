@@ -47,7 +47,8 @@ def build_run_dir(name: str, tmp_path: Path) -> Path:
     assert result.returncode == 0, result.stderr
     run_dir = Path(json.loads(result.stdout)["run_dir"])
     for golden in (REPO_ROOT / "fixtures" / name / "golden").iterdir():
-        shutil.copy(golden, run_dir / golden.name)
+        if golden.is_file():
+            shutil.copy(golden, run_dir / golden.name)
     return run_dir
 
 

@@ -7,6 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from ux_gate_helpers import approve_prd_file, audited_run, build_audit, make_gate_run, render, sha, ux_hash, write_audit  # noqa: E402
+
 
 def run_approve(
     run_dir: str,
@@ -324,11 +327,11 @@ def test_approve_missing_prd():
 
 
 def test_approve_unsupported_artifact():
-    """Test that unsupported artifact (ux) is rejected."""
+    """Test that an unsupported artifact (tickets) is rejected."""
     with tempfile.TemporaryDirectory() as tmpdir:
         run_dir = create_test_run(tmpdir, verdict="PASS")
 
-        code, stdout, stderr = run_approve(run_dir, artifact="ux")
+        code, stdout, stderr = run_approve(run_dir, artifact="tickets")
 
         assert code == 1, "Should have failed"
         assert "milestone" in stderr or "not available" in stderr
@@ -450,3 +453,206 @@ def test_approve_audited_fail_can_still_be_overridden():
 
         assert code == 0, stderr
         assert (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+# --- Gate B: approve ux ------------------------------------------------------
+
+def ux_state(run):
+    return json.loads((run / "state.json").read_text())
+
+
+def decisions_of(run):
+    return (run / "decisions.test.md").read_text()
+
+
+def test_approve_ux_refuses_without_prd_approval(tmp_path):
+    run = audited_run(tmp_path, prd_approved=False)
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "PRD approval is not valid" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_refuses_when_prd_changed_after_prd_approval(tmp_path):
+    run = audited_run(tmp_path)
+    (run / "prd.md").write_text((run / "prd.md").read_text() + "\nextra\n")
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "PRD approval is not valid" in stderr
+
+
+def test_approve_ux_refuses_without_audit(tmp_path):
+    run = make_gate_run(tmp_path)
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "not been audited" in stderr
+
+
+def test_approve_ux_refuses_without_audit_even_with_override(tmp_path):
+    run = make_gate_run(tmp_path)
+    code, _, stderr = run_approve(str(run), "ux", override_reason="ship it")
+    assert code == 1
+    assert "not been audited" in stderr
+
+
+def test_approve_ux_refuses_when_ux_changed_since_audit(tmp_path):
+    run = audited_run(tmp_path)
+    flows = run / "ux" / "flows.md"
+    flows.write_text(flows.read_text() + "\n")
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "UX changed since it was audited" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_fail_refuses_without_override(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    assert ux_state(run)["verdicts"]["ux"] == "FAIL"
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "use --override" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_fail_empty_override_refuses(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    code, _, stderr = run_approve(str(run), "ux", override_reason="  ")
+    assert code == 1
+    assert "use --override" in stderr
+
+
+def test_approve_ux_fail_succeeds_with_override_reason(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    code, _, stderr = run_approve(str(run), "ux", override_reason="Demo only")
+    assert code == 0, stderr
+    approval = json.loads((run / "approvals" / "ux.approved").read_text())
+    assert approval["verdict"] == "FAIL"
+    assert approval["override_reason"] == "Demo only"
+    assert "Override reason**: Demo only" in decisions_of(run)
+
+
+def test_approve_ux_success_writes_everything(tmp_path):
+    run = audited_run(tmp_path)
+    prd_before = (run / "prd.md").read_bytes()
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 0, stderr
+
+    approval = json.loads((run / "approvals" / "ux.approved").read_text())
+    assert approval["artifact"] == "ux"
+    assert approval["sha256"] == ux_hash(run)
+    assert approval["prd_sha256"] == sha(run / "prd.md")
+    assert approval["verdict"] == "PASS"
+    assert approval["override_reason"] is None
+    assert approval["approved_at"].endswith("Z")
+
+    state = ux_state(run)
+    assert state["approval_hashes"]["ux"] == ux_hash(run)
+    assert state["approval_hashes"]["prd"] is None  # Gate B does not touch the PRD entry
+    assert state["status"] == "approved"
+
+    trace = (run / "traceability.md").read_text()
+    assert "| REQ | Priority | Screens | Jira |" in trace
+    assert "SCR-001" in trace
+    assert "not yet created (Stage 3)" in trace
+
+    decisions = decisions_of(run)
+    assert "UX Approval" in decisions
+    assert "**Run**: run-1" in decisions
+    assert "**Verdict**: PASS" in decisions
+
+    assert (run / "prd.md").read_bytes() == prd_before
+
+
+def test_approve_ux_pass_with_risk_notes_risk(tmp_path):
+    run = audited_run(tmp_path, scores={"copy_clarity": 2})
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 0, stderr
+    assert "Risk accepted." in decisions_of(run)
+
+
+def test_approve_ux_does_not_touch_real_decisions_file(tmp_path):
+    run = audited_run(tmp_path)
+    repo_decisions = Path(__file__).parent.parent / "decisions.md"
+    before = repo_decisions.read_bytes() if repo_decisions.exists() else None
+    run_approve(str(run), "ux")
+    after = repo_decisions.read_bytes() if repo_decisions.exists() else None
+    assert before == after
+
+
+def test_approve_tickets_still_unavailable(tmp_path):
+    run = audited_run(tmp_path)
+    code, _, stderr = run_approve(str(run), "tickets")
+    assert code == 1
+    assert "not available until a later milestone" in stderr
+
+
+def test_check_approval_ux_approved(tmp_path):
+    run = audited_run(tmp_path)
+    run_approve(str(run), "ux")
+    code, stdout, _ = run_check_approval(str(run), "ux")
+    assert (code, stdout.strip()) == (0, "approved")
+
+
+def test_check_approval_ux_missing(tmp_path):
+    run = audited_run(tmp_path)
+    code, stdout, _ = run_check_approval(str(run), "ux")
+    assert code == 1
+    assert stdout.startswith("missing")
+
+
+def test_check_approval_ux_stale_after_screen_edit(tmp_path):
+    run = audited_run(tmp_path)
+    run_approve(str(run), "ux")
+    screen = run / "ux" / "screens" / "SCR-002-details.html"
+    screen.write_text(screen.read_text() + "\n<!-- edit -->\n")
+    code, stdout, _ = run_check_approval(str(run), "ux")
+    assert code == 1
+    assert stdout.startswith("stale")
+
+
+def test_check_approval_ux_stale_after_prd_edit(tmp_path):
+    run = audited_run(tmp_path)
+    run_approve(str(run), "ux")
+    (run / "prd.md").write_text((run / "prd.md").read_text() + "\nedit\n")
+    code, stdout, _ = run_check_approval(str(run), "ux")
+    assert code == 1
+    assert stdout.startswith("stale")
+
+
+def test_check_approval_ux_invalid_on_corrupt_file(tmp_path):
+    run = audited_run(tmp_path)
+    run_approve(str(run), "ux")
+    (run / "approvals" / "ux.approved").write_text("{not json")
+    code, stdout, _ = run_check_approval(str(run), "ux")
+    assert code == 1
+    assert stdout.startswith("invalid")
+
+
+def test_check_approval_ux_invalid_without_prd_sha256(tmp_path):
+    run = audited_run(tmp_path)
+    run_approve(str(run), "ux")
+    path = run / "approvals" / "ux.approved"
+    approval = json.loads(path.read_text())
+    del approval["prd_sha256"]
+    path.write_text(json.dumps(approval))
+    code, stdout, _ = run_check_approval(str(run), "ux")
+    assert code == 1
+    assert stdout.startswith("invalid")
+
+
+def test_check_approval_unknown_artifact_is_invalid(tmp_path):
+    run = audited_run(tmp_path)
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert code == 1
+    assert stdout.startswith("invalid")
+
+
+def test_approval_status_function_matches_cli(tmp_path):
+    sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+    from check_approval import approval_status
+    run = audited_run(tmp_path)
+    assert approval_status(str(run), "ux")[0] is False
+    approve_prd_file(run)
+    run_approve(str(run), "ux")
+    assert approval_status(str(run), "ux") == (True, "approved")
+    assert approval_status(str(run), "prd") == (True, "approved")

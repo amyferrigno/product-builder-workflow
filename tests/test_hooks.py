@@ -345,3 +345,38 @@ def test_guard_approvals_allows_non_approval_paths():
     """Ordinary paths still pass."""
     assert _hook_code("runs/x/prd.md") == 0
     assert _hook_code("docs/approvals/notes.md") == 0
+
+
+def _spec_hook_result(spec_text: str) -> subprocess.CompletedProcess:
+    import shutil
+    hook_script = Path(__file__).parent.parent / ".claude" / "hooks" / "validate_artifact.py"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = Path(tmpdir) / "runs" / "test"
+        shutil.copytree(Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "ux", run_dir / "ux")
+        shutil.copy(Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "prd.md", run_dir / "prd.md")
+        (run_dir / "ux" / "spec.md").write_text(spec_text, encoding="utf-8")
+        tool_call = {"tool_name": "Write", "tool_input": {"file_path": str(run_dir / "ux" / "spec.md")}}
+        return subprocess.run(
+            [sys.executable, str(hook_script)],
+            input=json.dumps(tool_call),
+            capture_output=True,
+            text=True,
+            env={"CLAUDE_PROJECT_DIR": str(Path(__file__).parent.parent)},
+            cwd=Path(__file__).parent.parent,
+        )
+
+
+def test_validate_artifact_accepts_valid_spec():
+    golden = Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "ux" / "spec.md"
+    result = _spec_hook_result(golden.read_text(encoding="utf-8"))
+    assert result.returncode == 0, result.stderr
+
+
+def test_validate_artifact_rejects_spec_with_unknown_req():
+    golden = Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "ux" / "spec.md"
+    spec = golden.read_text(encoding="utf-8")
+    first = next(line for line in spec.splitlines() if line.startswith("**REQs**"))
+    bad = spec.replace(first, first + ", REQ-999", 1)
+    result = _spec_hook_result(bad)
+    assert result.returncode == 2
+    assert "REQ-999" in result.stderr

@@ -376,6 +376,24 @@ def find_section_content(prd_text: str, section_num: int) -> str:
     return '\n'.join(lines[start_idx:end_idx])
 
 
+def parse_requirements(prd_text: str) -> List[Tuple[str, str]]:
+    """Return (REQ id, priority) for each requirement row of section 12, in order.
+
+    A row is a table row whose first cell holds a REQ id; the priority is the
+    third cell (empty string when the row is too short).
+    """
+    rows: List[Tuple[str, str]] = []
+    section = find_section_content(remove_html_comments(prd_text), 12)
+    for line in section.split('\n'):
+        cells = split_table_row(line)
+        if not cells:
+            continue
+        match = re.search(r'REQ-\d{3}', cells[0])
+        if match:
+            rows.append((match.group(), cells[2] if len(cells) > 2 else ''))
+    return rows
+
+
 ID_TOKEN_RE = re.compile(r'\b[A-Z]+-\d+\b')
 ISO_DATE_RE = re.compile(r'\b\d{4}-\d{2}-\d{2}\b')
 THOUSANDS_RE = re.compile(r'\d{1,3}(?:,\d{3})+')

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SCR-002 Request review</title>
+<style>
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f5f7fa;
+  --color-text: #1a1f29;
+  --color-text-muted: #4a5568;
+  --color-primary: #1d4ed8;
+  --color-on-primary: #ffffff;
+  --color-border: #8a94a6;
+  --color-success: #166534;
+  --color-warning: #92400e;
+  --color-danger: #b91c1c;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --radius: 8px;
+  --font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-size-base: 16px;
+  --touch-target-min: 44px;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font-family); font-size: var(--font-size-base); color: var(--color-text); background: var(--color-bg); margin: 0; }
+nav, main { max-width: 760px; margin: 0 auto; padding: var(--space-3); }
+nav { display: flex; flex-wrap: wrap; gap: var(--space-2); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+nav a { color: var(--color-primary); padding: var(--space-2) var(--space-3); min-height: var(--touch-target-min); display: inline-flex; align-items: center; }
+section { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-3); margin-bottom: var(--space-4); }
+section:target { outline: 3px solid var(--color-primary); }
+h1 { font-size: 1.5rem; margin-top: 0; }
+h2 { font-size: 1.1rem; }
+.muted { color: var(--color-text-muted); }
+.tag { display: inline-block; border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-1) var(--space-2); }
+.warn { color: var(--color-warning); border-color: var(--color-warning); font-weight: bold; }
+.ok { color: var(--color-success); font-weight: bold; }
+.err { color: var(--color-danger); font-weight: bold; }
+.box { background: var(--color-surface); border-radius: var(--radius); padding: var(--space-3); margin: var(--space-2) 0; white-space: pre-wrap; }
+.row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.row > * { flex: 1 1 280px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--color-border); padding: var(--space-2); text-align: left; }
+button, a.button { min-height: var(--touch-target-min); padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid var(--color-primary); background: var(--color-bg); color: var(--color-primary); font: inherit; display: inline-flex; align-items: center; cursor: pointer; margin: var(--space-1) var(--space-1) var(--space-1) 0; }
+button.primary, a.primary { background: var(--color-primary); color: var(--color-on-primary); }
+button.danger { border-color: var(--color-danger); color: var(--color-danger); }
+input, select, textarea { min-height: var(--touch-target-min); padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); font: inherit; width: 100%; }
+label { display: block; font-weight: bold; margin-top: var(--space-2); }
+</style>
+</head>
+<body>
+<nav aria-label="States of this screen">
+  <a href="../index.html">Gallery</a>
+  <a href="#state-default">default</a>
+  <a href="#state-loading">loading</a>
+  <a href="#state-empty">empty</a>
+  <a href="#state-error">error</a>
+  <a href="#state-success">success</a>
+  <a href="#state-low-confidence">low-confidence</a>
+  <a href="#state-user-edit">user-edit</a>
+  <a href="#state-regenerate">regenerate</a>
+  <a href="#state-explanation">explanation</a>
+  <a href="#state-escalation">escalation</a>
+</nav>
+<main data-screen="SCR-002">
+  <section id="state-default" data-state="default">
+<h1>Review request</h1>
+<p class="muted">This is a draft from the parser, not a final answer. Compare it with the original request.</p>
+<div class="row"><div><h2>Original request</h2><div class="box" aria-label="Original request text">From: Example Legal Firm (name@example.test)
+Please find a time next month for the partners, mornings only, not Fridays. Prefer our office, otherwise a video call.</div></div><div><h2>Parsed draft</h2><p>Confidence: <span class="ok">High</span></p><table>
+<caption>Parsed constraints</caption>
+<thead><tr><th scope="col">Type</th><th scope="col">Parsed value</th></tr></thead>
+<tbody>
+<tr><td>Date range</td><td>Next month</td></tr>
+<tr><td>Time of day</td><td>Mornings only</td></tr>
+<tr><td>Day exclusion</td><td>Not Fridays</td></tr>
+<tr><td>Location</td><td>Office preferred, video call as fallback</td></tr>
+</tbody></table></div></div>
+<p><button class="primary">Approve draft</button> <a class="button" href="#state-user-edit">Edit constraints</a> <button class="danger">Reject draft</button> <a class="button" href="#state-escalation">Send to manual parsing</a></p>
+  </section>
+  <section id="state-loading" data-state="loading">
+<h1>Review request</h1><p role="status">Parsing the request. This can take a moment. You can go back to the queue and return later.</p><p><a class="button" href="SCR-001-review-queue.html">Back to the queue</a></p>
+  </section>
+  <section id="state-empty" data-state="empty">
+<h1>Review request</h1><p>The parser found no scheduling constraints in this text. Nothing was invented. You can read the original and add constraints yourself, or send it to manual parsing.</p><p><a class="button primary" href="#state-user-edit">Add constraints</a> <a class="button" href="#state-escalation">Send to manual parsing</a></p>
+  </section>
+  <section id="state-error" data-state="error">
+<h1>Review request</h1><p class="err" role="alert">The parser failed on this request. No meeting was scheduled.</p><p>You can try again, or send the request to the manual queue so the customer is not blocked.</p><p><button class="primary">Try again</button> <a class="button" href="#state-escalation">Send to manual parsing</a></p>
+  </section>
+  <section id="state-success" data-state="success">
+<h1>Review request</h1><p class="ok" role="status">Draft approved. Your corrections were recorded so the parser can learn from them. The meeting will be scheduled from the approved constraints.</p><p><a class="button primary" href="SCR-001-review-queue.html">Next request</a></p>
+  </section>
+  <section id="state-low-confidence" data-state="low-confidence">
+<h1>Review request</h1>
+<p class="warn" role="status">Low confidence: the parser is unsure about this draft. Check every constraint against the original text before approving.</p>
+<div class="row"><div><h2>Original request</h2><div class="box" aria-label="Original request text">From: Example Legal Firm (name@example.test)
+Please find a time next month for the partners, mornings only, not Fridays. Prefer our office, otherwise a video call.</div></div><div><h2>Parsed draft</h2><p>Confidence: <span class="warn">Low</span></p><table>
+<caption>Parsed constraints</caption>
+<thead><tr><th scope="col">Type</th><th scope="col">Parsed value</th></tr></thead>
+<tbody>
+<tr><td>Date range</td><td>Next month</td></tr>
+<tr><td>Time of day</td><td>Mornings only</td></tr>
+<tr><td>Day exclusion</td><td>Not Fridays</td></tr>
+<tr><td>Location</td><td>Office preferred, video call as fallback</td></tr>
+</tbody></table><p class="warn">Check this one: the fallback location may have been read as the main preference.</p></div></div>
+<p><a class="button primary" href="#state-user-edit">Correct the draft</a> <a class="button" href="#state-regenerate">Parse again</a> <a class="button" href="#state-escalation">Send to manual parsing</a></p>
+  </section>
+  <section id="state-user-edit" data-state="user-edit">
+<h1>Edit constraints</h1>
+<p>Change any constraint. Your version replaces the draft and the correction is recorded.</p>
+<label for="c-date">Date range</label><input id="c-date" type="text" value="Next month">
+<label for="c-time">Time of day</label><input id="c-time" type="text" value="Mornings only">
+<label for="c-day">Day exclusion</label><input id="c-day" type="text" value="Not Fridays">
+<label for="c-loc">Location</label><input id="c-loc" type="text" value="Office preferred, video call as fallback">
+<p><button class="primary">Save and approve</button> <a class="button" href="#state-default">Cancel, keep the draft</a> <button class="danger">Reject draft</button></p>
+  </section>
+  <section id="state-regenerate" data-state="regenerate">
+<h1>Parse again</h1>
+<p>Ask the parser to read the request again. The current draft stays available, so you can compare the two and keep the one you prefer.</p>
+<label for="r-note">Hint for the parser (optional)</label>
+<textarea id="r-note" rows="3"></textarea>
+<p><button class="primary">Parse again</button> <a class="button" href="#state-default">Keep the current draft</a></p>
+  </section>
+  <section id="state-explanation" data-state="explanation">
+<h1>Why this draft?</h1>
+<p>The parser read the original request and matched each part of the text to a known constraint type. Parts of the text it used are shown below.</p>
+<ul>
+<li>"next month" gave the date range.</li>
+<li>"mornings only" gave the time of day.</li>
+<li>"not Fridays" gave the day exclusion.</li>
+<li>"our office, otherwise a video call" gave the location with a fallback.</li>
+</ul>
+<p class="muted">The parser never adds a constraint the text does not contain. If it is unsure or sees conflicting constraints, it flags the draft instead of guessing.</p>
+<p><a class="button" href="#state-default">Back to the draft</a></p>
+  </section>
+  <section id="state-escalation" data-state="escalation">
+<h1>Send to manual parsing</h1>
+<p>A person will parse this request by hand. The customer is not blocked and nothing is scheduled until a reviewer approves.</p>
+<label for="e-reason">What went wrong (optional)</label>
+<textarea id="e-reason" rows="3"></textarea>
+<p><button class="primary">Send to the manual queue</button> <a class="button" href="#state-default">Cancel</a></p>
+<p class="muted">Repeated corrections of the same constraint type are reported to the Engineer Lead.</p>
+  </section>
+</main>
+</body>
+</html>

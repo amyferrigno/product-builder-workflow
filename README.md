@@ -23,8 +23,8 @@ See [planning.md](planning.md) for the full roadmap and status.
 - **M0** (done): Scaffold—repo layout, config, schemas, validator, tests.
 - **M1** (done): Extraction + problem framing.
 - **M2** (done): PRD writer + auditor.
-- **M3 + M4** (current, merged): Data enrichment and customer anecdotes.
-- **M5**: UX design.
+- **M3 + M4** (done, merged): Data enrichment and customer anecdotes.
+- **M5** (current): UX design (Stage 2).
 - **M6**: Jira dry-run.
 - **M7**: Jira publish.
 - **M8**: Cost + polish.
@@ -64,6 +64,9 @@ Commands (skills in `.claude/skills/`):
 - `/pm-prd <path-or-paste>`: intake, extraction, problem framing, PRD draft, validation, audit, revision loop (up to `audit.max_revision_loops`), then stops at Human Gate A with a summary.
 - `/pm-audit prd <run_dir>`: audit an existing or hand-written PRD in a run folder.
 - `/pm-approve prd <run-id> [override reason]`: human only. Approves the PRD, tied to its hash.
+- `/pm-ux <run-id>`: Stage 2. Needs an approved PRD. Designs, validates, audits, loops, then stops at Human Gate B.
+- `/pm-audit ux <run-id>`: audit an existing `ux/` folder.
+- `/pm-approve ux <run-id> [override reason]`: human only. Approves the UX (Gate B).
 
 Scripts:
 
@@ -80,8 +83,24 @@ Hooks (`.claude/settings.json`):
 
 - `guard_approvals.py` (before Write/Edit): blocks any write under `runs/*/approvals/`.
 - `validate_artifact.py` (after Write/Edit): runs `validate_prd.py` when `runs/*/prd.md` is edited and reports errors.
+- `guard_stage_gate.py` (before Write/Edit): blocks writes under `runs/*/ux/` unless the PRD approval is valid, and writes to `runs/*/tickets.*` unless the UX approval is valid.
+
+The stage gate hook covers Write and Edit only, and it allows the write if it cannot run its check, so it is an early warning. The real control is `scripts/approve.py` and `scripts/check_approval.py`, which refuse to proceed without a valid approval.
 
 Agents: `prd-writer` (problem framing, PRD draft, PRD revision) and `prd-auditor` (read-only, returns audit JSON). The verdict is computed by script, not by the auditor.
+
+## Stage 2: UX (M5)
+
+`/pm-ux <run-id>` turns an approved PRD into files under `runs/<run-id>/ux/`:
+
+- `flows.md`: one section per user flow with a mermaid diagram.
+- `screens/SCR-###-<name>.html`: one clickable mock per screen, with every required state (default, loading, empty, error, success; for an AI feature also low-confidence, user-edit, regenerate, explanation, escalation).
+- `index.html`: a gallery linking to every screen and every state.
+- `spec.md`: purpose, requirements, components, copy, interactions and analytics events for each screen.
+
+What the script checks (`scripts/validate_ux.py`): required states, every Must requirement mapped to a screen, REQ ids that exist, self-contained files, design tokens only, labels and alt text, and that the index and spec match the screens. What the auditor judges (agent `ux-auditor`, rubric `templates/audit-ux.rubric.yaml`): requirement coverage, required states, AI trust, control and recovery, accessibility, token consistency and copy clarity. If the script finds errors, the verdict is FAIL whatever the auditor scored.
+
+Gate B: the human runs `/pm-approve ux <run-id>`. It writes `traceability.md` (REQ to screens) and leaves `prd.md` untouched. Changing the PRD or any UX file afterwards makes the UX approval stale. Screenshots are not included: no headless browser and no new dependency in M5.
 
 ## Evidence plug-ins (M3 + M4: data and anecdotes)
 

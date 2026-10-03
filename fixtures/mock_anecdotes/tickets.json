@@ -1,0 +1,421 @@
+[
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48201",
+    "date": "2026-06-03",
+    "segment": "SMB",
+    "persona": "Office manager",
+    "pain": "Finding a meeting slot across three calendars takes too long",
+    "quote": "Every time I need to book a client call I open three calendars and compare them by eye. It takes me twenty minutes for a thirty minute call. Then I still have to email the other side to confirm, wait for a reply, and sometimes start again because the slot got taken in the meantime.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "calendar",
+      "meetings"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48202",
+    "date": "2026-06-05",
+    "segment": "Mid-market",
+    "persona": "Sales operations lead",
+    "pain": "Back-and-forth emails to agree a time",
+    "quote": "We send five or six emails just to agree a time for one demo. Prospects give up before we ever confirm the slot.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "email",
+      "back-and-forth"
+    ]
+  },
+  {
+    "source": "nps",
+    "source_ref": "nps/9001",
+    "date": "2026-06-09",
+    "segment": "Enterprise",
+    "persona": "IT administrator",
+    "pain": "IT approval blocks the calendar integration",
+    "quote": "Our security team has not approved the calendar integration yet, so nobody on my team can connect their calendar and everyone schedules by hand.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "it approval",
+      "calendar",
+      "integration",
+      "scheduling"
+    ]
+  },
+  {
+    "source": "gong",
+    "source_ref": "call/7710",
+    "date": "2026-06-11",
+    "segment": "Enterprise",
+    "persona": "VP of Operations",
+    "pain": "Scheduling across time zones and teams is slow",
+    "quote": "Honestly the slowest part of onboarding a new customer is getting six people from three time zones into one room. We lose a week on scheduling alone, and the kickoff meeting keeps slipping because someone's calendar is always full when the rest of us are free.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "meetings",
+      "time zones"
+    ]
+  },
+  {
+    "source": "interview",
+    "source_ref": "int/301",
+    "date": "2026-06-14",
+    "segment": "SMB",
+    "persona": "Founder",
+    "pain": "Wants one-click booking",
+    "quote": "I would pay for anything that lets a customer pick a time without me replying to an email.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "booking",
+      "email"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48203",
+    "date": "2026-06-16",
+    "segment": "SMB",
+    "persona": "Recruiter",
+    "pain": "Candidate scheduling is manual",
+    "quote": "Please email me at jordan.testperson@example.invalid when the interview scheduling fix ships. I currently schedule each candidate by hand.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "calendar",
+      "interview"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48204",
+    "date": "2026-06-18",
+    "segment": "Mid-market",
+    "persona": "Customer success manager",
+    "pain": "Billing invoice shows wrong tax",
+    "quote": "The invoice for May shows the wrong tax rate and I need a corrected PDF for finance.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "billing",
+      "invoice",
+      "tax"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48205",
+    "date": "2026-06-20",
+    "segment": "SMB",
+    "persona": "Owner",
+    "pain": "Cannot log in after password reset",
+    "quote": "I reset my password twice and still get a login error. The reset link says it has expired.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "login",
+      "password"
+    ]
+  },
+  {
+    "source": "nps",
+    "source_ref": "nps/9002",
+    "date": "2026-06-22",
+    "segment": "Mid-market",
+    "persona": "Account executive",
+    "pain": "Love the new booking page",
+    "quote": "The new booking page is great. Prospects pick a time in seconds and my calendar stays clean. Scheduling used to be my worst chore.",
+    "sentiment": 2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "booking",
+      "calendar"
+    ]
+  },
+  {
+    "source": "gong",
+    "source_ref": "call/7711",
+    "date": "2026-06-24",
+    "segment": "Enterprise",
+    "persona": "Director of IT",
+    "pain": "Integration approval takes months",
+    "quote": "Getting a calendar integration through our review board took four months. By then the team had gone back to email threads to schedule meetings.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "it approval",
+      "integration",
+      "scheduling",
+      "meetings"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48206",
+    "date": "2026-06-26",
+    "segment": "SMB",
+    "persona": "Practice manager",
+    "pain": "Call me about scheduling double-bookings",
+    "quote": "We keep getting double-booked. Call me on +00 000 555 0101 so I can explain which calendars clash.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "double-booking",
+      "calendar"
+    ]
+  },
+  {
+    "source": "nps",
+    "source_ref": "nps/9003",
+    "date": "2026-06-28",
+    "segment": "Mid-market",
+    "persona": "Operations analyst",
+    "pain": "Billing portal is confusing",
+    "quote": "I could not find where to download last quarter's invoices. The billing portal needs a clearer menu.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "billing",
+      "invoice"
+    ]
+  },
+  {
+    "source": "interview",
+    "source_ref": "int/302",
+    "date": "2026-07-01",
+    "segment": "Enterprise",
+    "persona": "Chief of Staff",
+    "pain": "Executive scheduling is a full-time job",
+    "quote": "Casey Samplename spends half of every day moving meetings around the executive team's calendars. A tool that proposes times automatically would give that time back.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "calendar",
+      "meetings",
+      "executive"
+    ]
+  },
+  {
+    "source": "gong",
+    "source_ref": "call/7712",
+    "date": "2026-07-03",
+    "segment": "Mid-market",
+    "persona": "Head of Sales",
+    "pain": "Rep time lost to emailing for slots",
+    "quote": "Our reps lose roughly an hour a day to email back-and-forth about when to meet. It is the most boring part of the job.",
+    "sentiment": -2,
+    "consent_ok": false,
+    "keywords": [
+      "scheduling",
+      "email",
+      "back-and-forth",
+      "meetings"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48207",
+    "date": "2026-07-05",
+    "segment": "Enterprise",
+    "persona": "Procurement lead",
+    "pain": "Northwind Example Ltd needs IT approval paperwork",
+    "quote": "Northwind Example Ltd cannot turn on calendar sync until our IT approval is done. Please send the security questionnaire so scheduling can start.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "it approval",
+      "calendar",
+      "scheduling",
+      "security"
+    ]
+  },
+  {
+    "source": "nps",
+    "source_ref": "nps/9004",
+    "date": "2026-07-08",
+    "segment": "SMB",
+    "persona": "Freelance consultant",
+    "pain": "Scheduling works well for me",
+    "quote": "Booking links work well. Clients book themselves into my free slots and I never touch email for scheduling any more.",
+    "sentiment": 1,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "booking",
+      "email"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48208",
+    "date": "2026-07-10",
+    "segment": "Mid-market",
+    "persona": "Support lead",
+    "pain": "Login with SSO fails",
+    "quote": "SSO login loops back to the sign-in page. My teammate Jordan Testperson sees the same thing on his laptop.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "login",
+      "sso"
+    ]
+  },
+  {
+    "source": "gong",
+    "source_ref": "call/7713",
+    "date": "2026-07-12",
+    "segment": "Enterprise",
+    "persona": "Program manager",
+    "pain": "Rescheduling cascades",
+    "quote": "When one person moves a meeting, I have to chase everyone else by email to find a new slot. A single change creates a dozen follow-up messages.",
+    "sentiment": -2,
+    "consent_ok": false,
+    "keywords": [
+      "scheduling",
+      "meetings",
+      "email",
+      "rescheduling"
+    ]
+  },
+  {
+    "source": "interview",
+    "source_ref": "int/303",
+    "date": "2026-07-15",
+    "segment": "SMB",
+    "persona": "Clinic coordinator",
+    "pain": "Patients cannot self-schedule",
+    "quote": "Patients phone us to book. Reach the front desk team at (000) 555-0102 or have them email front.desk@example.invalid, and we write each time into the calendar by hand.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "calendar",
+      "booking"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48209",
+    "date": "2026-07-18",
+    "segment": "Mid-market",
+    "persona": "Finance analyst",
+    "pain": "Refund not received",
+    "quote": "I was promised a refund two weeks ago and nothing has arrived. Contoso Fakeworks Inc is waiting on it.",
+    "sentiment": -2,
+    "consent_ok": true,
+    "keywords": [
+      "billing",
+      "refund"
+    ]
+  },
+  {
+    "source": "nps",
+    "source_ref": "nps/9005",
+    "date": "2026-07-20",
+    "segment": "Enterprise",
+    "persona": "Engineering manager",
+    "pain": "Integration needs admin consent",
+    "quote": "Calendar integration needs a tenant admin to consent. Our admin is busy so scheduling on the new tool stalled for a month.",
+    "sentiment": -1,
+    "consent_ok": false,
+    "keywords": [
+      "it approval",
+      "integration",
+      "calendar",
+      "scheduling"
+    ]
+  },
+  {
+    "source": "gong",
+    "source_ref": "call/7714",
+    "date": "2026-07-23",
+    "segment": "Mid-market",
+    "persona": "Customer success director",
+    "pain": "Scheduling is why we chose you",
+    "quote": "Smart scheduling was the reason we picked you over the other vendors. Meetings with customers get booked in a couple of clicks and that has changed how we work.",
+    "sentiment": 2,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "meetings",
+      "booking"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48210",
+    "date": "2026-07-25",
+    "segment": "SMB",
+    "persona": "Bookkeeper",
+    "pain": "Update card on file",
+    "quote": "I need to update the card on file. My billing page just spins. Reach me at https://jordan:hunter2@example.invalid/billing if needed.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "billing",
+      "card"
+    ]
+  },
+  {
+    "source": "interview",
+    "source_ref": "int/304",
+    "date": "2026-07-28",
+    "segment": "Mid-market",
+    "persona": "Product designer",
+    "pain": "Hard to find a time for research calls",
+    "quote": "Scheduling research calls with participants takes more effort than the research itself, mostly because of calendar mismatches and slow email replies.",
+    "sentiment": -1,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "calendar",
+      "email",
+      "interview"
+    ]
+  },
+  {
+    "source": "nps",
+    "source_ref": "nps/9006",
+    "date": "2026-08-01",
+    "segment": "SMB",
+    "persona": "Salon owner",
+    "pain": "Reminders reduce no-shows",
+    "quote": "Appointment reminders cut my no-shows a lot. Scheduling is easier since I switched.",
+    "sentiment": 1,
+    "consent_ok": true,
+    "keywords": [
+      "scheduling",
+      "reminders",
+      "booking"
+    ]
+  },
+  {
+    "source": "zendesk",
+    "source_ref": "ticket/48211",
+    "date": "2026-08-04",
+    "segment": "Enterprise",
+    "persona": "Security analyst",
+    "pain": "Password policy question",
+    "quote": "Does the login flow support our 14 character password policy? We need an answer before the audit on 2026-09-12.",
+    "sentiment": 0,
+    "consent_ok": true,
+    "keywords": [
+      "login",
+      "password",
+      "security"
+    ]
+  }
+]

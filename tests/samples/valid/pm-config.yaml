@@ -38,3 +38,4 @@ ux:
   design_tokens: "[[PATH_TO_TOKENS_OR_DESIGN_SYSTEM]]"
 anecdotes:
   allow_company_names: false
+  pii_terms: { people: [], companies: [] }

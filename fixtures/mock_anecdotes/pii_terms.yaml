@@ -1,0 +1,7 @@
+# Planted fake PII names in tickets.json (synthetic; used by tests and the mock config)
+people:
+  - Jordan Testperson
+  - Casey Samplename
+companies:
+  - Northwind Example Ltd
+  - Contoso Fakeworks Inc

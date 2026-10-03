@@ -99,7 +99,15 @@
       "additionalProperties": false,
       "required": ["allow_company_names"],
       "properties": {
-        "allow_company_names": { "type": "boolean" }
+        "allow_company_names": { "type": "boolean" },
+        "pii_terms": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "people": { "type": "array", "items": { "type": "string" } },
+            "companies": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     }
   }

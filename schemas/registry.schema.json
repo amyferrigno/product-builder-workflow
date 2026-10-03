@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Connectors Registry Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["providers"],
+  "properties": {
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "enabled", "capabilities"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string", "enum": ["mcp", "script"] },
+          "enabled": { "type": "boolean" },
+          "server": { "type": "string" },
+          "command": { "type": "string" },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "kind": { "const": "mcp" } }
+            },
+            "then": {
+              "required": ["server"]
+            }
+          },
+          {
+            "if": {
+              "properties": { "kind": { "const": "script" } }
+            },
+            "then": {
+              "required": ["command"]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

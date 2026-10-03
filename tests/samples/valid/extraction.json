@@ -1,0 +1,76 @@
+{
+  "run_id": "run-001",
+  "attendee_roles": ["Product Manager", "Engineer", "Designer"],
+  "problems": [
+    {
+      "id": "PB-001",
+      "text": "Users cannot complete onboarding without IT help",
+      "source_lines": [1, 2, 3],
+      "type": "stated"
+    }
+  ],
+  "proposed_solutions": [
+    {
+      "id": "SOL-001",
+      "text": "Add step-by-step guided setup wizard",
+      "source_lines": [5],
+      "type": "stated"
+    }
+  ],
+  "user_segments": [
+    {
+      "id": "SEG-001",
+      "text": "SMB admins with no IT department",
+      "source_lines": [4],
+      "type": "stated"
+    }
+  ],
+  "requests": [
+    {
+      "id": "REQ-001",
+      "text": "Faster setup process",
+      "source_lines": [6],
+      "type": "stated"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "text": "We will ship the setup wizard in Q1",
+      "source_lines": [7],
+      "type": "stated"
+    }
+  ],
+  "disagreements": [
+    {
+      "id": "DIS-001",
+      "text": "One person wanted to push to Q2",
+      "source_lines": [8],
+      "type": "stated"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "OQ-001",
+      "text": "What about users with existing setups?",
+      "source_lines": [9],
+      "type": "assumption"
+    }
+  ],
+  "action_items": [
+    {
+      "id": "AI-001",
+      "text": "Research competitor setup flows",
+      "source_lines": [10],
+      "type": "stated"
+    }
+  ],
+  "metrics_mentioned": [
+    {
+      "id": "MET-001",
+      "text": "Setup completion rate is 65%",
+      "source_lines": [11],
+      "type": "stated"
+    }
+  ]
+}

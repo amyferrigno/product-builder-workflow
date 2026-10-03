@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PM Config Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["product", "models", "budgets", "audit", "data", "jira", "ux", "anecdotes"],
+  "properties": {
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "vision", "strategy_doc"],
+      "properties": {
+        "name": { "type": "string" },
+        "vision": { "type": "string" },
+        "strategy_doc": { "type": "string" }
+      }
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extraction", "enrichment", "anecdotes", "prd_writer", "prd_auditor", "ux_designer", "ux_auditor", "ticket_architect", "jira_publisher"],
+      "properties": {
+        "extraction": { "type": "string" },
+        "enrichment": { "type": "string" },
+        "anecdotes": { "type": "string" },
+        "prd_writer": { "type": "string" },
+        "prd_auditor": { "type": "string" },
+        "ux_designer": { "type": "string" },
+        "ux_auditor": { "type": "string" },
+        "ticket_architect": { "type": "string" },
+        "jira_publisher": { "type": "string" }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage1", "stage2", "stage3", "warn_at_percent"],
+      "properties": {
+        "stage1": { "type": "number" },
+        "stage2": { "type": "number" },
+        "stage3": { "type": "number" },
+        "warn_at_percent": { "type": "integer" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_revision_loops"],
+      "properties": {
+        "max_revision_loops": { "type": "integer" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cache_ttl_hours", "max_rows_returned", "aggregate_only", "pii_tables"],
+      "properties": {
+        "cache_ttl_hours": { "type": "integer" },
+        "max_rows_returned": { "type": "integer" },
+        "aggregate_only": { "type": "boolean" },
+        "pii_tables": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "jira": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "site", "project_key", "use_initiatives", "use_product_discovery", "components", "default_labels", "custom_fields"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["dry_run", "publish"] },
+        "site": { "type": "string" },
+        "project_key": { "type": "string" },
+        "use_initiatives": { "type": "boolean" },
+        "use_product_discovery": { "type": "boolean" },
+        "components": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "default_labels": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "custom_fields": { "type": "object" }
+      }
+    },
+    "ux": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output", "design_tokens"],
+      "properties": {
+        "output": { "type": "string", "enum": ["html", "figma"] },
+        "design_tokens": { "type": "string" }
+      }
+    },
+    "anecdotes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow_company_names"],
+      "properties": {
+        "allow_company_names": { "type": "boolean" }
+      }
+    }
+  }
+}

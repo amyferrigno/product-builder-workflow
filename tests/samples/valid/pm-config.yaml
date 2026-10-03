@@ -1,0 +1,40 @@
+product:
+  name: "[[PRODUCT_NAME]]"
+  vision: "[[ONE_LINE_VISION]]"
+  strategy_doc: "[[PATH_OR_URL]]"
+models:
+  extraction: small
+  enrichment: medium
+  anecdotes: small
+  prd_writer: large
+  prd_auditor: medium
+  ux_designer: medium
+  ux_auditor: medium
+  ticket_architect: medium
+  jira_publisher: small
+budgets:
+  stage1: 3.00
+  stage2: 2.00
+  stage3: 1.00
+  warn_at_percent: 80
+audit:
+  max_revision_loops: 2
+data:
+  cache_ttl_hours: 24
+  max_rows_returned: 500
+  aggregate_only: true
+  pii_tables: []
+jira:
+  mode: dry_run
+  site: "[[JIRA_SITE]]"
+  project_key: "[[KEY]]"
+  use_initiatives: false
+  use_product_discovery: false
+  components: []
+  default_labels: ["agentic-pm"]
+  custom_fields: {}
+ux:
+  output: html
+  design_tokens: "[[PATH_TO_TOKENS_OR_DESIGN_SYSTEM]]"
+anecdotes:
+  allow_company_names: false

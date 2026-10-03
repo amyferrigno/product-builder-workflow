@@ -1,0 +1,30 @@
+{
+  "run_id": "run-001",
+  "prd_slug": "setup-wizard",
+  "initiative": "self-service-onboarding",
+  "epics": [
+    {
+      "id": "EPIC-001",
+      "summary": "Build guided setup wizard",
+      "description": "Enable SMB admins to complete setup",
+      "labels": ["onboarding"],
+      "problem_ref": "PB-001",
+      "children": [
+        {
+          "id": "TICKET-001",
+          "type": "Story",
+          "summary": "Create step-by-step wizard flow",
+          "description": "Design and implement the wizard",
+          "labels": ["frontend"],
+          "priority": "high",
+          "req_ids": ["REQ-001"],
+          "screen_ids": ["SCR-001"],
+          "acceptance_criteria": ["User can proceed through all steps"],
+          "blocks": [],
+          "jira_key": null,
+          "story_points": 5
+        }
+      ]
+    }
+  ]
+}

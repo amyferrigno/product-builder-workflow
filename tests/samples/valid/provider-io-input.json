@@ -1,0 +1,9 @@
+{
+  "question": "What is the setup step 3 abandon rate for SMB admins?",
+  "query_id": "setup_funnel_v2",
+  "params": {
+    "segment": "smb_admin",
+    "step": 3,
+    "period": "2026-07-01..2026-09-30"
+  }
+}

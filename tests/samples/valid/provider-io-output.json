@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows": [
+    {"segment": "smb_admin", "step": 3, "abandon_rate": 0.38, "count": 4727}
+  ],
+  "n": 12450,
+  "run_at": "2026-10-03T10:00:00Z",
+  "query_hash": "abc123def456",
+  "caveats": ["excludes trial accounts"]
+}

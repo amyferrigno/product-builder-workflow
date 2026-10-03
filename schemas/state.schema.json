@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "State Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "stage", "status", "verdicts", "artifact_hashes", "approval_hashes", "jira_keys", "updated_at"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "stage": {
+      "type": "string",
+      "enum": ["stage1", "stage2", "stage3", "done"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["in_progress", "awaiting_approval", "approved", "failed", "escalated"]
+    },
+    "verdicts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prd": {
+          "oneOf": [
+            { "type": "string", "enum": ["PASS", "PASS_WITH_RISK", "FAIL"] },
+            { "type": "null" }
+          ]
+        },
+        "ux": {
+          "oneOf": [
+            { "type": "string", "enum": ["PASS", "PASS_WITH_RISK", "FAIL"] },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "artifact_hashes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "approval_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prd": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "ux": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "tickets": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "jira_keys": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "updated_at": { "type": "string" }
+  }
+}

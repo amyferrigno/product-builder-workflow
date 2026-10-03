@@ -1,0 +1,16 @@
+{
+  "id": "BADID",
+  "claim": "38% of users abandon at step 3",
+  "metric": "abandon_rate",
+  "value": 0.38,
+  "segment": "smb_admin",
+  "period": "2026-07-01..2026-09-30",
+  "n": 12450,
+  "source": "warehouse",
+  "query_id": "funnel_v2",
+  "query_hash": "abc123",
+  "run_at": "2026-10-03T10:00:00Z",
+  "confidence": "high",
+  "caveats": [],
+  "supports_problem": "PB-001"
+}

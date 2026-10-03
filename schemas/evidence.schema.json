@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence Card Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim", "metric", "value", "segment", "period", "n", "source", "query_id", "query_hash", "run_at", "confidence", "caveats", "supports_problem"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^EV-\\d{3}$"
+    },
+    "claim": { "type": "string" },
+    "metric": { "type": "string" },
+    "value": { "type": "number" },
+    "segment": { "type": "string" },
+    "period": { "type": "string" },
+    "n": { "type": "integer", "minimum": 0 },
+    "source": { "type": "string" },
+    "query_id": { "type": "string" },
+    "query_hash": { "type": "string" },
+    "run_at": { "type": "string" },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "caveats": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "supports_problem": {
+      "type": "string",
+      "pattern": "^PB-\\d+$"
+    }
+  }
+}

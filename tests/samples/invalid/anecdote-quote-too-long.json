@@ -1,0 +1,14 @@
+{
+  "id": "AN-001",
+  "source": "zendesk",
+  "source_ref": "ticket/48213",
+  "date": "2026-09-12",
+  "segment": "SMB",
+  "persona": "Account admin",
+  "pain": "Can't finish setup without IT help",
+  "quote": "I had to call our IT team just to get past step 3. It should be simpler. This is a very long quote that goes on and on and on and on and on. I'm trying to make it longer than 400 characters by repeating myself. I had to call our IT team just to get past step 3. It should be simpler. This is a very long quote that goes on and on and on and on and on. I'm trying to make it longer than 400 characters by repeating myself. I had to call our IT team just to get past step 3. It should be simpler. This is a very long quote that goes on and on and on and on and on. Done!",
+  "sentiment": -2,
+  "linked_problem": "PB-001",
+  "frequency_hint": "EV-001",
+  "consent_ok": true
+}

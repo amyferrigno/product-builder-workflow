@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ticket Manifest Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "prd_slug", "epics"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "prd_slug": { "type": "string" },
+    "initiative": { "type": ["string", "null"] },
+    "epics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "summary", "description", "labels", "problem_ref", "children"],
+        "properties": {
+          "id": { "type": "string" },
+          "summary": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "description": { "type": "string" },
+          "labels": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "problem_ref": { "type": "string" },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "type", "summary", "description", "labels", "priority", "req_ids", "screen_ids", "acceptance_criteria", "blocks", "jira_key"],
+              "properties": {
+                "id": { "type": "string" },
+                "type": {
+                  "type": "string",
+                  "enum": ["Story", "Task", "Spike"]
+                },
+                "summary": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "description": { "type": "string" },
+                "labels": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "priority": { "type": "string" },
+                "req_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^REQ-\\d{3}$"
+                  }
+                },
+                "screen_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^SCR-\\d{3}$"
+                  }
+                },
+                "acceptance_criteria": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "blocks": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "jira_key": {
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "null" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

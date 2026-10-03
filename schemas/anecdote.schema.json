@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Anecdote Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "source", "source_ref", "date", "segment", "persona", "pain", "quote", "sentiment", "linked_problem", "frequency_hint", "consent_ok"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^AN-\\d{3}$"
+    },
+    "source": { "type": "string" },
+    "source_ref": { "type": "string" },
+    "date": { "type": "string" },
+    "segment": { "type": "string" },
+    "persona": { "type": "string" },
+    "pain": { "type": "string" },
+    "quote": {
+      "type": "string",
+      "maxLength": 400
+    },
+    "sentiment": {
+      "type": "integer",
+      "minimum": -2,
+      "maximum": 2
+    },
+    "linked_problem": {
+      "type": "string",
+      "pattern": "^PB-\\d+$"
+    },
+    "frequency_hint": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^EV-\\d{3}$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "consent_ok": { "type": "boolean" }
+  }
+}

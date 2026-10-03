@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Provider I/O Schema",
+  "oneOf": [
+    { "$ref": "#/$defs/input" },
+    { "$ref": "#/$defs/output" }
+  ],
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "query_id", "params"],
+      "properties": {
+        "question": { "type": "string" },
+        "query_id": { "type": "string" },
+        "params": { "type": "object" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "rows", "n", "run_at", "query_hash", "caveats"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "rows": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "n": { "type": "integer" },
+        "run_at": { "type": "string" },
+        "query_hash": { "type": "string" },
+        "caveats": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": { "type": "string" }
+      },
+      "if": {
+        "properties": { "ok": { "const": false } }
+      },
+      "then": {
+        "required": ["error"]
+      }
+    }
+  }
+}

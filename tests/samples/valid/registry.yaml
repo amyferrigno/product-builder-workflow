@@ -1,0 +1,15 @@
+providers:
+  - id: warehouse
+    kind: mcp
+    enabled: false
+    server: "[[MCP_SERVER_NAME]]"
+    capabilities:
+      - sql_readonly
+  - id: product_analytics
+    kind: script
+    enabled: false
+    command: "python connectors/providers/analytics.py"
+    capabilities:
+      - funnel
+      - retention
+      - segment_counts

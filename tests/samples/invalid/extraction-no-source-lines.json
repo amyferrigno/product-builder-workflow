@@ -1,0 +1,19 @@
+{
+  "run_id": "run-001",
+  "attendee_roles": ["Product Manager"],
+  "problems": [
+    {
+      "id": "PB-001",
+      "text": "Users cannot complete onboarding",
+      "type": "stated"
+    }
+  ],
+  "proposed_solutions": [],
+  "user_segments": [],
+  "requests": [],
+  "decisions": [],
+  "disagreements": [],
+  "open_questions": [],
+  "action_items": [],
+  "metrics_mentioned": []
+}

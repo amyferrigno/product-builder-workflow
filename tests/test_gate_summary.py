@@ -472,7 +472,8 @@ def _build_golden_run(name: str, tmp_path: Path) -> Path:
     assert intake.returncode == 0, intake.stderr
     run_dir = Path(json.loads(intake.stdout)["run_dir"])
     for golden in (REPO_ROOT / "fixtures" / name / "golden").iterdir():
-        shutil.copy(golden, run_dir / golden.name)
+        if golden.is_file():
+            shutil.copy(golden, run_dir / golden.name)
     subprocess.run(
         [sys.executable, "scripts/render_audit.py", str(run_dir)],
         capture_output=True, text=True, cwd=REPO_ROOT,
@@ -610,3 +611,75 @@ def test_gate_summary_next_step_no_verdict_says_audit_first():
         code, stdout, stderr = run_gate_summary(run_dir)
         assert code == 0, stderr
         assert _next_step_line(stdout) == "Next step: run the audit first"
+
+
+# --- Gate B: gate_summary ux --------------------------------------------------
+
+def _ux_summary(tmp_path, ai=False, scores=None):
+    sys.path.insert(0, str(Path(__file__).parent))
+    from ux_gate_helpers import audited_run
+    run = audited_run(tmp_path, ai=ai, scores=scores)
+    return run, run_gate_summary(str(run), "ux")
+
+
+def test_gate_summary_ux_pass(tmp_path):
+    run, (code, stdout, stderr) = _ux_summary(tmp_path)
+    assert code == 0, stderr
+    assert "UX Gate Summary" in stdout
+    assert "Audit Verdict: PASS" in stdout
+    assert "req_coverage: 4 *" in stdout
+    assert "accessibility: 4\n" in stdout
+    assert "Screens: 2" in stdout
+    assert "Script check errors: none" in stdout
+    assert "Fixes for scores below 3" not in stdout
+    assert "Next step: Approve with /pm-approve ux run-1" in stdout
+
+
+def test_gate_summary_ux_must_coverage_counts(tmp_path):
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from validate_prd import parse_requirements
+    run, (code, stdout, _) = _ux_summary(tmp_path)
+    must = [r for r, p in parse_requirements((run / "prd.md").read_text()) if p == "Must"]
+    assert f"Must requirements covered: {len(must)} of {len(must)}" in stdout
+
+
+def test_gate_summary_ux_shows_fixes_for_low_scores(tmp_path):
+    run, (code, stdout, _) = _ux_summary(tmp_path, scores={"copy_clarity": 2, "req_coverage": 1})
+    assert code == 0
+    assert "Audit Verdict: FAIL" in stdout
+    assert "Fixes for scores below 3:" in stdout
+    assert "copy_clarity: Improve copy_clarity. (screens: SCR-001)" in stdout
+    assert "verdict is FAIL" in stdout
+    assert "/pm-approve ux run-1" in stdout
+
+
+def test_gate_summary_ux_lists_script_errors(tmp_path):
+    sys.path.insert(0, str(Path(__file__).parent))
+    from ux_gate_helpers import audited_run
+    run = audited_run(tmp_path)
+    (run / "ux" / "index.html").unlink()
+    code, stdout, _ = run_gate_summary(str(run), "ux")
+    assert code == 0
+    assert "Script check errors (" in stdout
+    assert "index.html" in stdout
+
+
+def test_gate_summary_ux_without_audit_says_audit_first(tmp_path):
+    sys.path.insert(0, str(Path(__file__).parent))
+    from ux_gate_helpers import make_gate_run
+    run = make_gate_run(tmp_path)
+    code, stdout, _ = run_gate_summary(str(run), "ux")
+    assert code == 0
+    assert "Audit Verdict: not available" in stdout
+    assert "Next step: run the audit first" in stdout
+
+
+def test_gate_summary_ux_missing_folder_errors(tmp_path):
+    sys.path.insert(0, str(Path(__file__).parent))
+    from ux_gate_helpers import make_gate_run
+    import shutil as _shutil
+    run = make_gate_run(tmp_path)
+    _shutil.rmtree(run / "ux")
+    code, _, stderr = run_gate_summary(str(run), "ux")
+    assert code == 1
+    assert "ux folder not found" in stderr

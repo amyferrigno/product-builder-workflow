@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Check if an artifact is approved and hash matches.
-Usage: python scripts/check_approval.py <run_dir> prd
+Usage: python scripts/check_approval.py <run_dir> prd|ux
 Exit 0 and print 'approved' if approval exists and hash is current, else exit 1.
 """
 
@@ -20,13 +20,19 @@ def hash_file(file_path: str) -> str:
         raise ValueError(f"Cannot read {file_path}")
 
 
-def check_approval(run_dir: str, artifact: str) -> None:
+def approval_status(run_dir: str, artifact: str) -> tuple:
     """
-    Check if an artifact approval is valid.
+    Return (ok, message) for an artifact approval.
 
-    Exits with code 0 and prints 'approved' if approval exists and hash matches.
-    Exits with code 1 and prints 'missing', 'stale', or 'invalid' otherwise.
+    Messages start with 'approved', 'missing', 'stale' or 'invalid'.
+    'ux' is approved only when its approval matches the current UX hash, the
+    PRD approval is itself valid and its prd_sha256 matches the current prd.md.
     """
+
+    if artifact == "ux":
+        return _ux_status(run_dir)
+    if artifact != "prd":
+        return False, f"invalid: unknown artifact {artifact}"
 
     run_path = Path(run_dir)
     artifact_path = run_path / f"{artifact}.md"
@@ -34,43 +40,92 @@ def check_approval(run_dir: str, artifact: str) -> None:
 
     # Check if artifact file exists
     if not artifact_path.exists():
-        print(f"missing: {artifact}.md not found")
-        sys.exit(1)
+        return False, f"missing: {artifact}.md not found"
 
     # Check if approval file exists
     if not approval_path.exists():
-        print(f"missing: approval file not found")
-        sys.exit(1)
+        return False, "missing: approval file not found"
 
     # Try to load and parse approval file
     try:
         with open(approval_path, 'r') as f:
             approval = json.load(f)
     except (json.JSONDecodeError, IOError, ValueError):
-        print(f"invalid: cannot parse approval file")
-        sys.exit(1)
+        return False, "invalid: cannot parse approval file"
 
     # Check if approval has sha256
-    if "sha256" not in approval:
-        print(f"invalid: sha256 missing from approval file")
-        sys.exit(1)
+    if not isinstance(approval, dict) or "sha256" not in approval:
+        return False, "invalid: sha256 missing from approval file"
 
     # Compute current hash
     try:
         current_hash = hash_file(str(artifact_path))
     except ValueError as e:
-        print(f"invalid: {str(e)}")
-        sys.exit(1)
+        return False, f"invalid: {str(e)}"
 
     # Compare hashes
-    approval_hash = approval.get("sha256")
-    if approval_hash != current_hash:
-        print(f"stale: {artifact}.md has changed since approval")
-        sys.exit(1)
+    if approval.get("sha256") != current_hash:
+        return False, f"stale: {artifact}.md has changed since approval"
 
-    # Approval is valid
-    print("approved")
-    sys.exit(0)
+    return True, "approved"
+
+
+def _ux_hash(run_dir: str) -> str:
+    """UX hash from scripts/ux_hash.py, imported by path so this file works from any cwd."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from ux_hash import ux_hash
+    return ux_hash(run_dir)
+
+
+def _ux_status(run_dir: str) -> tuple:
+    run_path = Path(run_dir)
+    approval_path = run_path / "approvals" / "ux.approved"
+
+    if not (run_path / "ux").is_dir():
+        return False, "missing: ux folder not found"
+    if not approval_path.exists():
+        return False, "missing: approval file not found"
+
+    try:
+        with open(approval_path, 'r') as f:
+            approval = json.load(f)
+    except (json.JSONDecodeError, IOError, ValueError):
+        return False, "invalid: cannot parse approval file"
+    if not isinstance(approval, dict) or "sha256" not in approval:
+        return False, "invalid: sha256 missing from approval file"
+    if "prd_sha256" not in approval:
+        return False, "invalid: prd_sha256 missing from approval file"
+
+    try:
+        current_ux = _ux_hash(run_dir)
+    except (ValueError, OSError) as e:
+        return False, f"invalid: {str(e)}"
+    if approval.get("sha256") != current_ux:
+        return False, "stale: ux has changed since approval"
+
+    prd_ok, prd_message = approval_status(run_dir, "prd")
+    if not prd_ok:
+        return False, f"{prd_message.split(':')[0]}: PRD approval is not valid ({prd_message})"
+    try:
+        current_prd = hash_file(str(run_path / "prd.md"))
+    except ValueError as e:
+        return False, f"invalid: {str(e)}"
+    if approval.get("prd_sha256") != current_prd:
+        return False, "stale: prd.md has changed since the UX was approved"
+
+    return True, "approved"
+
+
+def check_approval(run_dir: str, artifact: str) -> None:
+    """
+    Check if an artifact approval is valid.
+
+    Exits with code 0 and prints 'approved' if approval exists and hash matches.
+    Exits with code 1 and prints 'missing', 'stale', or 'invalid' otherwise.
+    """
+    ok, message = approval_status(run_dir, artifact)
+    print(message)
+    sys.exit(0 if ok else 1)
 
 
 def main():

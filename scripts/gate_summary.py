@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Print a one-screen summary of a PRD artifact.
-Usage: python scripts/gate_summary.py <run_dir> prd
+Usage: python scripts/gate_summary.py <run_dir> prd|ux
 """
 
 import sys
@@ -191,8 +191,90 @@ def split_scope(section_text: str) -> tuple:
     return section_text[:match.start()], section_text[match.end():]
 
 
+def ux_gate_summary(run_dir: str) -> None:
+    """Print a short summary of the UX artifact for Human Gate B."""
+    from ux_verdict import load_ux_rubric
+    from validate_prd import parse_requirements
+    from validate_ux import spec_screen_reqs, validate_ux
+
+    run_path = Path(run_dir)
+    prd_content = load_markdown_file(run_path / "prd.md")
+    if prd_content is None:
+        print("Error: prd.md not found", file=sys.stderr)
+        sys.exit(1)
+    if not (run_path / "ux").is_dir():
+        print("Error: ux folder not found", file=sys.stderr)
+        sys.exit(1)
+
+    state_path = run_path / "state.json"
+    state = (load_json_file(state_path) if state_path.exists() else None) or {}
+    run_id = state.get("run_id", "unknown")
+    verdict = (state.get("verdicts") or {}).get("ux")
+
+    audit = load_json_file(run_path / "ux.audit.json")
+    dims = audit.get("dimensions", []) if isinstance(audit, dict) else []
+    try:
+        blocking = {d.get("id") for d in load_ux_rubric(REPO_ROOT).get("dimensions", []) if d.get("blocking")}
+    except Exception:
+        blocking = set()
+
+    screens = sorted((run_path / "ux" / "screens").glob("SCR-*.html"))
+
+    requirements = parse_requirements(prd_content)
+    must = [r for r, priority in requirements if priority == "Must"]
+    covered = set()
+    spec_text = load_markdown_file(run_path / "ux" / "spec.md")
+    if spec_text:
+        for reqs in spec_screen_reqs(spec_text).values():
+            covered.update(reqs)
+    must_covered = [r for r in must if r in covered]
+
+    errors = validate_ux(run_dir, REPO_ROOT)
+
+    lines = ["=" * 60, "UX Gate Summary", "=" * 60, f"Run ID: {run_id}"]
+    lines.append(f"Audit Verdict: {verdict if verdict else 'not available'}")
+    if dims:
+        lines.append("Scores by dimension (* = blocking):")
+        for dim in dims:
+            mark = " *" if dim.get("id") in blocking else ""
+            lines.append(f"  {dim.get('id')}: {dim.get('score')}{mark}")
+    lines.append(f"Screens: {len(screens)}")
+    lines.append(f"Must requirements covered: {len(must_covered)} of {len(must)}")
+    if errors:
+        lines.append(f"Script check errors ({len(errors)}):")
+        lines.extend(f"  - {e}" for e in errors)
+    else:
+        lines.append("Script check errors: none")
+
+    fixes = []
+    for dim in dims:
+        score = dim.get("score")
+        if isinstance(score, int) and score < 3 and dim.get("fix"):
+            screens_txt = f" (screens: {', '.join(dim['screens'])})" if dim.get("screens") else ""
+            fixes.append(f"  - {dim.get('id')}: {dim['fix']}{screens_txt}")
+    if fixes:
+        lines.append("Fixes for scores below 3:")
+        lines.extend(fixes)
+
+    if verdict in ("PASS", "PASS_WITH_RISK"):
+        lines.append(f"Next step: Approve with /pm-approve ux {run_id} or send change requests")
+    elif verdict == "FAIL":
+        lines.append(
+            f"Next step: verdict is FAIL; fix the screens above, or approve with /pm-approve ux {run_id} and an explicit override reason"
+        )
+    else:
+        lines.append("Next step: run the audit first")
+    lines.append("=" * 60)
+    for line in lines:
+        print(line)
+
+
 def gate_summary(run_dir: str, artifact: str) -> None:
     """Print a one-screen summary."""
+
+    if artifact == "ux":
+        ux_gate_summary(run_dir)
+        return
 
     run_path = Path(run_dir)
 
@@ -288,7 +370,7 @@ def gate_summary(run_dir: str, artifact: str) -> None:
 def main():
     """Main entry point."""
     if len(sys.argv) != 3:
-        print("Usage: python scripts/gate_summary.py <run_dir> prd", file=sys.stderr)
+        print("Usage: python scripts/gate_summary.py <run_dir> prd|ux", file=sys.stderr)
         sys.exit(1)
 
     run_dir = sys.argv[1]

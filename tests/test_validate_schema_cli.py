@@ -92,3 +92,17 @@ def test_unparseable_json_exits_1(tmp_path):
     exit_code, stdout, stderr = run_validator(schema_path, str(bad_json_file))
     assert exit_code == 1, f"Unparseable file should exit 1, got {exit_code}"
     assert "Cannot parse" in stdout
+
+
+def test_empty_file_exits_1(tmp_path):
+    """Check that validator treats an empty or whitespace-only file as unparseable."""
+    repo_root = Path(__file__).parent.parent
+    schema_path = str(repo_root / "schemas" / "evidence.schema.json")
+    for name, content in (("empty.json", ""), ("blank.json", "  \n\n")):
+        empty_file = tmp_path / name
+        empty_file.write_text(content)
+
+        exit_code, stdout, stderr = run_validator(schema_path, str(empty_file))
+        assert exit_code == 1, f"Empty file should exit 1, got {exit_code}"
+        assert "Cannot parse" in stdout
+        assert "file is empty" in stdout

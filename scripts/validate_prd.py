@@ -209,6 +209,122 @@ def load_anecdote_ids(run_dir: Path) -> Set[str]:
     return anecdote_ids
 
 
+def load_anecdote_quotes(run_dir: Path) -> Dict[str, str]:
+    """Map each anecdote id in 04-anecdotes.json to its quote text."""
+    anecdotes_file = run_dir / "04-anecdotes.json"
+    if not anecdotes_file.exists():
+        return {}
+    try:
+        data = load_json_file(anecdotes_file)
+    except (FileNotFoundError, ValueError):
+        return {}
+    if isinstance(data, dict):
+        data = data.get("anecdotes", [])
+    if not isinstance(data, list):
+        return {}
+    return {
+        r["id"]: r["quote"]
+        for r in data
+        if isinstance(r, dict) and isinstance(r.get("id"), str) and isinstance(r.get("quote"), str)
+    }
+
+
+def extraction_item_texts(extraction: dict) -> Dict[str, str]:
+    """Map each extraction item id to its text."""
+    texts: Dict[str, str] = {}
+    if isinstance(extraction, dict):
+        for value in extraction.values():
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict) and isinstance(item.get("id"), str) and isinstance(item.get("text"), str):
+                        texts[item["id"]] = item["text"]
+    return texts
+
+
+# Quote styles: double (straight or curly, mixed pairs allowed), single (straight or curly,
+# mixed pairs allowed; an opening single quote must not follow a word character and a closing one
+# must not be followed by one, so don't and team's are not quote marks), guillemets in both
+# directions, German low quotes, single angle quotes and CJK corner brackets.
+QUOTED_RE = re.compile(
+    '["\u201c]([^"\u201c\u201d]+)["\u201d]'
+    "|(?<!\\w)['\u2018](?=\\S)(.+?)(?<=\\S)['\u2019](?!\\w)"
+    "|\u00ab([^\u00bb]+)\u00bb"
+    "|\u00bb([^\u00ab]+)\u00ab"
+    "|\u201e([^\u201c\u201d]+)[\u201c\u201d]"
+    "|\u2039([^\u203a]+)\u203a"
+    "|\u300c([^\u300d]+)\u300d"
+)
+BLOCKQUOTE_RE = re.compile(r'^\s*>[>\s]*(.*)$')
+CITATION_GROUP_RE = re.compile(r'[(\[][^()\[\]]*\b[A-Z]+-\d+\b[^()\[\]]*[)\]]')
+QUOTE_CHARS = '"\'\u201c\u201d\u2018\u2019\u00ab\u00bb'
+LIST_ITEM_RE = re.compile(r'^\s*(?:[-*+]|\d+[.)])\s')
+
+
+def quote_units(section_6b: str) -> List[str]:
+    """Split section 6b into paragraphs, list items and table rows."""
+    units: List[str] = []
+    current: List[str] = []
+
+    def flush() -> None:
+        if current:
+            units.append('\n'.join(current))
+            current.clear()
+
+    for line in section_6b.split('\n'):
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            flush()
+        elif split_table_row(line) is not None:
+            flush()
+            units.append(line)
+        elif LIST_ITEM_RE.match(line):
+            flush()
+            current.append(line)
+        else:
+            current.append(line)
+    flush()
+    return units
+
+
+def _quoted_passages(unit: str) -> List[str]:
+    """Quoted passages in one unit: inline quotes, and whole blockquote lines."""
+    passages: List[str] = []
+    inline_lines: List[str] = []
+    for line in unit.split('\n'):
+        block = BLOCKQUOTE_RE.match(line)
+        if block:
+            text = CITATION_GROUP_RE.sub(' ', block.group(1))
+            text = re.sub(r'\b[A-Z]+-\d+\b', ' ', text)
+            passages.append(text.strip(' \t' + QUOTE_CHARS + '-\u2013\u2014:,;'))
+        else:
+            inline_lines.append(line)
+    for match in QUOTED_RE.finditer('\n'.join(inline_lines)):
+        passages.append(next(g for g in match.groups() if g is not None))
+    return passages
+
+
+def find_unsupported_quotes(
+    section_6b: str, anecdote_quotes: Dict[str, str], item_texts: Dict[str, str]
+) -> List[str]:
+    """
+    Return quoted passages of 4 or more words that are not a substring of the quote of a cited
+    anecdote (AN-###) or the text of a cited extraction item in the same paragraph, list item
+    or table row.
+    """
+    unsupported: List[str] = []
+    for unit in quote_units(section_6b):
+        cited = set(re.findall(r'\b[A-Z]+-\d+\b', unit))
+        sources = [" ".join(anecdote_quotes[i].split()) for i in cited if i in anecdote_quotes]
+        sources += [" ".join(item_texts[i].split()) for i in cited if i in item_texts]
+        for passage in _quoted_passages(unit):
+            quoted = " ".join(passage.split())
+            if len(quoted.split()) < 4:
+                continue
+            if not any(quoted in source for source in sources) and quoted not in unsupported:
+                unsupported.append(quoted)
+    return unsupported
+
+
 def remove_html_comments(text: str) -> str:
     """Remove HTML comments from text."""
     return re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
@@ -738,6 +854,23 @@ def validate_prd(run_dir: str) -> Tuple[bool, List[str]]:
         for display, value in traceable_numbers(remove_html_comments(section_text), run_id_literals):
             if value not in supported_numbers:
                 errors.append(f"Unsupported number '{display}' in section {section_num}")
+
+    # === Rule k: Quotes in section 6b must come from an anecdote record or an extraction item ===
+    section_6_text = find_section_content(prd_text, 6)
+    if section_6_text:
+        section_6b_lines = []
+        in_6b = False
+        for line in remove_html_comments(section_6_text).split('\n'):
+            if line.startswith('### 6b.'):
+                in_6b = True
+            elif line.startswith('###'):
+                in_6b = False
+            if in_6b:
+                section_6b_lines.append(line)
+        for quoted in find_unsupported_quotes(
+            '\n'.join(section_6b_lines), load_anecdote_quotes(run_path), extraction_item_texts(extraction or {})
+        ):
+            errors.append(f'Unsupported quote in section 6b: "{quoted[:40]}..."')
 
     return len(errors) == 0, errors
 

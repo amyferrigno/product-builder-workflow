@@ -206,3 +206,77 @@ def test_meeting_to_prd_never_approves():
     assert "must never run `scripts/approve.py`" in body
     assert "shasum -a 256" in body
     assert "audit.max_revision_loops" in body
+
+
+# --- M3 + M4: data-enricher, anecdote-curator, new skills, settings ---
+def _tier_model(key):
+    with open(REPO / "pm.config.yaml") as f:
+        config = yaml.safe_load(f)
+    return TIER_TO_MODEL[config["models"][key]]
+
+
+def test_data_enricher_front_matter_and_tier():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "data-enricher.md")
+    assert fm["name"] == "data-enricher"
+    assert fm["description"]
+    assert fm["model"] == _tier_model("enrichment")
+    assert {t.strip() for t in fm["tools"].split(",")} == {"Read", "Bash"}
+
+
+def test_data_enricher_never_writes_cards():
+    body = (REPO / ".claude" / "agents" / "data-enricher.md").read_text()
+    assert "NEVER write or edit files under `03-evidence/`" in body
+    assert "scripts/enrich.py run" in body
+    assert "scripts/validate_evidence.py" in body
+
+
+def test_anecdote_curator_front_matter_and_tier():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "anecdote-curator.md")
+    assert fm["name"] == "anecdote-curator"
+    assert fm["description"]
+    assert fm["model"] == _tier_model("anecdotes")
+    assert {t.strip() for t in fm["tools"].split(",")} == {"Read", "Write"}
+
+
+def test_anecdote_curator_copies_records_exactly():
+    body = (REPO / ".claude" / "agents" / "anecdote-curator.md").read_text()
+    assert "EXACTLY" in body
+    assert "counter-anecdote" in body
+    assert "frequency_hint" in body
+
+
+def test_new_skills_exist_with_matching_name():
+    for skill in ("data-enrichment", "customer-anecdotes"):
+        path = REPO / ".claude" / "skills" / skill / "SKILL.md"
+        assert path.exists(), f"{skill} SKILL.md not found"
+        fm = parse_agent_file(path)
+        assert fm["name"] == skill
+        assert fm["description"]
+
+
+def test_every_skill_file_under_200_lines():
+    skill_files = list((REPO / ".claude" / "skills").glob("*/SKILL.md"))
+    assert len(skill_files) >= 5
+    for path in skill_files:
+        lines = path.read_text().splitlines()
+        assert len(lines) < 200, f"{path.parent.name} SKILL.md has {len(lines)} lines"
+
+
+def test_meeting_to_prd_evidence_step_runs_both_in_parallel():
+    body = (REPO / ".claude" / "skills" / "meeting-to-prd" / "SKILL.md").read_text()
+    assert "data-enrichment" in body and "customer-anecdotes" in body
+    assert "in parallel" in body
+    assert "No data provider configured" in body
+
+
+def test_settings_json_is_valid_and_references_four_hooks():
+    import json
+
+    raw = (REPO / ".claude" / "settings.json").read_text()
+    settings = json.loads(raw)
+    assert "hooks" in settings
+    for script in ("guard_approvals.py", "validate_artifact.py", "guard_readonly_query.py", "pii_scan.py"):
+        assert script in raw, f"{script} not referenced in settings.json"
+        assert (REPO / ".claude" / "hooks" / script).exists(), f"{script} missing"
+    pre_matchers = {entry["matcher"] for entry in settings["hooks"]["PreToolUse"]}
+    assert {"Write|Edit", "Bash", "mcp__.*"} <= pre_matchers

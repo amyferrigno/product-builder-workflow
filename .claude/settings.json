@@ -9,6 +9,24 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_approvals.py\""
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_readonly_query.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_readonly_query.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -18,6 +36,10 @@
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/validate_artifact.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/pii_scan.py\""
           }
         ]
       }

@@ -1,0 +1,55 @@
+queries:
+  - id: ticket_share_by_category
+    provider: mock_warehouse
+    file: ticket_share_by_category.sql
+    description: Share of support tickets in one category for a period
+    metric: ticket_share
+    metric_definition: Tickets in the category divided by all tickets created in the period (fraction 0 to 1)
+    params:
+      - name: category
+        description: Ticket category to measure the share of
+        allowed_values: [billing, calendar_sync, other, reminders, scheduling_conflict, timezone_confusion]
+      - name: period_start
+        description: First month to include, inclusive
+        format: YYYY-MM (data covers 2025-07 to 2025-12)
+      - name: period_end
+        description: Last month to include, inclusive
+        format: YYYY-MM (data covers 2025-07 to 2025-12)
+    example:
+      question: What share of tickets in 2025-07 to 2025-12 are scheduling conflicts?
+      params: {category: scheduling_conflict, period_start: "2025-07", period_end: "2025-12"}
+    value_field: share
+    n_field: total_tickets
+    status: reviewed
+  - id: median_minutes_to_confirm
+    provider: mock_warehouse
+    file: median_minutes_to_confirm.sql
+    description: Median minutes to confirm a completed meeting for one segment
+    metric: median_minutes_to_confirm
+    metric_definition: Median of minutes_to_confirm over completed scheduling events of accounts in the segment
+    params:
+      - name: segment
+        description: Customer segment of the account
+        allowed_values: [enterprise, mid_market, smb]
+    example:
+      question: What is the median minutes to confirm a meeting for enterprise accounts?
+      params: {segment: enterprise}
+    value_field: median_minutes
+    n_field: n_meetings
+    status: reviewed
+  - id: avg_messages_per_meeting
+    provider: mock_warehouse
+    file: avg_messages_per_meeting.sql
+    description: Average messages exchanged per completed meeting for one segment
+    metric: avg_messages_per_meeting
+    metric_definition: Mean of messages_exchanged over completed scheduling events of accounts in the segment
+    params:
+      - name: segment
+        description: Customer segment of the account
+        allowed_values: [enterprise, mid_market, smb]
+    example:
+      question: What is the average number of messages per meeting for enterprise accounts?
+      params: {segment: enterprise}
+    value_field: avg_messages
+    n_field: n_meetings
+    status: reviewed

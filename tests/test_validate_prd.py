@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 # Baseline valid PRD with all required headings and content
 VALID_PRD_BASE = """## 1. Header
@@ -1093,3 +1095,197 @@ def test_cited_requirement_without_row_fails():
     assert code != 0
     assert "Requirement REQ-777 is cited but has no row in section 12" in stdout
 
+
+
+# --- Quotes in section 6b must be supported ---
+def _with_6b_text(text: str) -> str:
+    return VALID_PRD_BASE.replace(
+        "Customer feedback from interviews supports the problem.",
+        f"Customer feedback from interviews supports the problem. {text}",
+    )
+
+
+def test_6b_quote_from_anecdote_record_passes():
+    prd = _with_6b_text('One admin said "I spend too much time on scheduling" (AN-001).')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_6b_curly_quote_from_anecdote_record_passes():
+    prd = _with_6b_text("One admin said “spend too much time on” (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_6b_quote_from_extraction_item_passes():
+    extraction = make_extraction()
+    extraction["problems"][0]["text"] = "Admins said booking takes far too long every week"
+    prd = _with_6b_text('In the meeting: "booking takes far too long" (P-1).')
+    code, stdout, _ = _validate_variant(prd, extraction)
+    assert code == 0, stdout
+
+
+def test_6b_invented_quote_fails():
+    prd = _with_6b_text('A customer said "this tool ruined my entire week" (AN-001).')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert 'Unsupported quote in section 6b: "this tool ruined my entire week..."' in stdout
+
+
+def test_6b_short_quoted_phrase_is_ignored():
+    prd = _with_6b_text('They called it "far too slow" (AN-001).')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_quote_outside_section_6b_is_not_checked():
+    prd = VALID_PRD_BASE.replace("Strategic context and timing.", 'Strategic context and "a long invented phrase here".')
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+# --- Quote styles in section 6b ---
+REAL_QUOTE = "I spend too much time on scheduling"
+INVENTED_QUOTE = "this tool ruined my entire week"
+INVENTED_MESSAGE = 'Unsupported quote in section 6b: "this tool ruined my entire week..."'
+QUOTE_STYLES = {
+    "single_straight": ("'", "'"),
+    "single_curly": ("‘", "’"),
+    "guillemets": ("«", "»"),
+    "curly_open_straight_close": ("‘", "'"),
+    "straight_open_curly_close": ("'", "’"),
+}
+
+
+@pytest.mark.parametrize("style", sorted(QUOTE_STYLES))
+def test_6b_invented_quote_fails_in_every_style(style):
+    left, right = QUOTE_STYLES[style]
+    prd = _with_6b_text(f"A customer said {left}{INVENTED_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert INVENTED_MESSAGE in stdout
+
+
+@pytest.mark.parametrize("style", sorted(QUOTE_STYLES))
+def test_6b_real_quote_passes_in_every_style(style):
+    left, right = QUOTE_STYLES[style]
+    prd = _with_6b_text(f"A customer said {left}{REAL_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+@pytest.mark.parametrize("left,right", [("\u201e", "\u201c"), ("\u201e", "\u201d")])
+def test_6b_invented_german_low_quote_fails(left, right):
+    prd = _with_6b_text(f"A customer said {left}{INVENTED_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert INVENTED_MESSAGE in stdout
+
+
+@pytest.mark.parametrize("left,right", [("\u201e", "\u201c"), ("\u201e", "\u201d")])
+def test_6b_real_german_low_quote_passes(left, right):
+    prd = _with_6b_text(f"A customer said {left}{REAL_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+@pytest.mark.parametrize("left,right", [
+    ("\u00bb", "\u00ab"),  # reversed guillemets
+    ("\u2039", "\u203a"),  # single angle quotes
+    ("\u300c", "\u300d"),  # CJK corner brackets
+])
+def test_6b_invented_quote_fails_in_other_quote_marks(left, right):
+    prd = _with_6b_text(f"A customer said {left}{INVENTED_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert INVENTED_MESSAGE in stdout
+
+
+def test_6b_invented_blockquote_fails():
+    prd = _with_6b_text(f"\n\n> {INVENTED_QUOTE}\n> (AN-001)")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert INVENTED_MESSAGE in stdout
+
+
+def test_6b_real_blockquote_passes():
+    prd = _with_6b_text(f"\n\n> {REAL_QUOTE} (AN-001)")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_6b_apostrophes_in_prose_are_not_quotes():
+    prd = _with_6b_text("The team's admins don't mind, and the manager's view isn't settled (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+def test_6b_curly_apostrophes_in_prose_are_not_quotes():
+    prd = _with_6b_text("The team’s admins don’t mind, and the manager’s view isn’t settled (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+# --- Quotes must be tied to the record they come from ---
+def _validate_with_two_anecdotes(prd: str, extraction: dict = None) -> tuple:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(
+            tmpdir, "2026-10-03-test", extraction if extraction is not None else make_extraction(),
+            make_problem_md(), prd,
+        )
+        create_evidence_card(run_dir, "EV-001", 2)
+        create_anecdotes(run_dir, ["AN-001", "AN-002"])
+        path = Path(run_dir) / "04-anecdotes.json"
+        records = json.loads(path.read_text())
+        records[1]["quote"] = "Billing reminders arrive far too late"
+        path.write_text(json.dumps(records))
+        return run_validator(run_dir)
+
+
+def test_6b_quote_with_right_citation_passes():
+    prd = _with_6b_text(f'Admin said "{REAL_QUOTE}" (AN-001) and another said "Billing reminders arrive far too late" (AN-002).')
+    code, stdout, _ = _validate_with_two_anecdotes(prd)
+    assert code == 0, stdout
+
+
+def test_6b_real_quote_with_wrong_citation_fails():
+    prd = _with_6b_text(f'Admin said "{REAL_QUOTE}" (AN-002).')
+    code, stdout, _ = _validate_with_two_anecdotes(prd)
+    assert code == 1
+    assert 'Unsupported quote in section 6b: "I spend too much time on scheduling..."' in stdout
+
+
+def test_6b_real_quote_with_no_citation_fails():
+    prd = _with_6b_text(f'Admin said "{REAL_QUOTE}" without any citation.')
+    code, stdout, _ = _validate_with_two_anecdotes(prd)
+    assert code == 1
+    assert 'Unsupported quote in section 6b: "I spend too much time on scheduling..."' in stdout
+
+
+def test_6b_citation_in_another_paragraph_does_not_count():
+    prd = _with_6b_text(f'Admin said "{REAL_QUOTE}" here.\n\nCited elsewhere (AN-001).')
+    code, stdout, _ = _validate_with_two_anecdotes(prd)
+    assert code == 1
+    assert "Unsupported quote in section 6b" in stdout
+
+
+def test_6b_citation_in_same_table_row_counts():
+    prd = _with_6b_text(f'\n\n| Source | Quote |\n|---|---|\n| AN-001 | "{REAL_QUOTE}" |')
+    code, stdout, _ = _validate_with_two_anecdotes(prd)
+    assert code == 0, stdout
+
+
+def test_6b_citation_in_same_list_item_counts_but_not_next_item():
+    prd = _with_6b_text(f'\n\n- Admin: "{REAL_QUOTE}" (AN-001)\n- Other: "{REAL_QUOTE}" (AN-002)')
+    code, stdout, _ = _validate_with_two_anecdotes(prd)
+    assert code == 1
+    assert stdout.count("Unsupported quote in section 6b") == 1
+
+
+def test_6b_extraction_quote_needs_its_own_item_cited():
+    extraction = make_extraction()
+    extraction["problems"][0]["text"] = "Admins said booking takes far too long every week"
+    prd = _with_6b_text('In the meeting: "booking takes far too long" (M-1).')
+    code, stdout, _ = _validate_variant(prd, extraction)
+    assert code == 1
+    assert 'Unsupported quote in section 6b: "booking takes far too long..."' in stdout

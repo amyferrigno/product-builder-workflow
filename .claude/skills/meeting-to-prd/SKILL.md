@@ -96,9 +96,15 @@ Update `<run_dir>/state.json`: set `artifact_hashes.extraction` and `artifact_ha
 ```
 Stop if it exits 1.
 
-### Step 7: Evidence (M2: no providers)
+### Step 7: Evidence
 
-There are no data or anecdote providers yet. Do not create `03-evidence/` or `04-anecdotes.json`. Data enrichment arrives in M3 and anecdotes in M4. The PRD must say so: "No data provider configured" in section 6a and "No anecdote provider configured" in section 6b.
+Read the registry (`connectors/registry.yaml`, or the path the human gave). If it has no enabled providers, do not create `03-evidence/` or `04-anecdotes.json`. The PRD must say so: "No data provider configured" in section 6a and "No anecdote provider configured" in section 6b.
+
+If it has enabled providers, run both steps in parallel (two agent calls in one turn):
+- Data: follow skill `data-enrichment` (`/pm-enrich <run-id>`, needs a `sql_readonly` provider). It calls agent `data-enricher` and writes `03-evidence/`.
+- Anecdotes: follow skill `customer-anecdotes` (`/pm-anecdotes <run-id>`, needs an `anecdotes` provider). It calls agent `anecdote-curator` and writes `04-anecdotes.json`.
+
+Validate both (`scripts/validate_evidence.py <run_dir>` and `scripts/validate_anecdotes.py <run_dir>`) with the one-retry rule those skills define, then continue to the draft. If only one kind of provider is enabled, run only that one and the PRD states the other is not configured. For the offline demo use `--registry fixtures/registry.mock.yaml --config fixtures/pm.config.mock.yaml`.
 
 ### Step 8: PRD draft
 

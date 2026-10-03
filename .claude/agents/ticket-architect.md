@@ -45,7 +45,11 @@ Write one file: `<run_dir>/tickets.manifest.json`, valid against `schemas/ticket
 - One Epic per problem or milestone. Each Epic has a `problem_ref` that exists in `02-problem.md`.
 - Stories are vertical slices: each one delivers user value on its own (INVEST). Never split by layer (no "build the API" or "build the UI" stories).
 - Tasks are for instrumentation, eval, data and design handoff. Set `task_kind` on every Task.
-- One Spike per blocking open question of the PRD. Set `open_question_ref` on every Spike.
+- One Spike per blocking open question of the PRD. Set `open_question_ref` on every Spike to the question's text as written in the PRD.
+  - A question is blocking when a Story or Task cannot be built or accepted until it is answered. Evidence gaps and cost estimates that do not stop the build get no Spike.
+  - Put the Spike in the Epic whose work it blocks, list that work in `blocks`, and describe it with the Task template.
+- A requirement with no screen becomes a Story with `user_facing: false` or a Task; never invent a screen.
+- Do not copy `jira.project_key` or any `[[...]]` placeholder into the manifest; the publish script adds the project.
 - Never Sub-tasks.
 - Exactly one instrumentation Task (`task_kind: instrumentation`) per feature Epic.
 - One cross-cutting "Measure & Quality" Epic with `kind: measure_quality`. Feature Epics use `kind: feature`.

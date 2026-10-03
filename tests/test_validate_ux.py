@@ -115,6 +115,57 @@ def test_anchor_links_are_not_colour_literals(tmp_path):
     assert validate_ux(run) == []
 
 
+@pytest.mark.parametrize("snippet", [
+    '<svg><rect fill="#ff0000"/></svg>',
+    "<p bgcolor='#abc'>x</p>",
+    '<p style="color:#ff0000">x</p>',
+])
+def test_quoted_colour_literals_rejected(tmp_path, snippet):
+    run = make_ux_run(tmp_path)
+    edit(run, SCREEN1, "<main", snippet + "<main", 1)
+    assert has(validate_ux(run), "colour literal")
+
+
+@pytest.mark.parametrize("href", ["#state-loading", "#abc"])
+def test_anchor_href_values_accepted(tmp_path, href):
+    run = make_ux_run(tmp_path)
+    edit(run, SCREEN1, "<main", f'<a href="{href}">Go</a><main', 1)
+    assert validate_ux(run) == []
+
+
+@pytest.mark.parametrize("snippet", [
+    "<style>@import url(https://example.com/a.css);</style>",
+    '<p style="background:url(http://example.com/a.png)">x</p>',
+    '<img alt="x" srcset="https://example.com/a.png 2x">',
+    '<object data="https://example.com/a.swf"></object>',
+    '<form action="https://example.com/post"></form>',
+    '<script>var u = "https://example.com";</script>',
+])
+def test_external_urls_rejected(tmp_path, snippet):
+    run = make_ux_run(tmp_path)
+    edit(run, SCREEN1, "<main", snippet + "<main", 1)
+    assert has(validate_ux(run), "external URL not allowed")
+
+
+def test_external_url_in_index_rejected(tmp_path):
+    run = make_ux_run(tmp_path)
+    edit(run, "index.html", "<body>", '<body><form action="https://example.com"></form>', 1)
+    assert has(validate_ux(run), "index.html", "external URL")
+
+
+def test_state_with_only_script_is_empty(tmp_path):
+    run = make_ux_run(tmp_path)
+    edit(run, SCREEN1, "<p>Home: error state.</p>", "<script>var a = 1;</script>")
+    assert has(validate_ux(run), "state 'error' is empty")
+
+
+def test_state_inside_template_is_empty(tmp_path):
+    run = make_ux_run(tmp_path)
+    edit(run, SCREEN1, '<section id="state-error" data-state="error"><p>Home: error state.</p></section>',
+         '<template><section id="state-error" data-state="error"><p>Home: error state.</p></section></template>')
+    assert has(validate_ux(run), "state 'error' is empty")
+
+
 def test_tokens_block_missing(tmp_path):
     run = make_ux_run(tmp_path)
     path = run / "ux" / SCREEN1

@@ -85,6 +85,8 @@ Hooks (`.claude/settings.json`):
 - `validate_artifact.py` (after Write/Edit): runs `validate_prd.py` when `runs/*/prd.md` is edited and reports errors.
 - `guard_stage_gate.py` (before Write/Edit): blocks writes under `runs/*/ux/` unless the PRD approval is valid, and writes to `runs/*/tickets.*` unless the UX approval is valid.
 
+The stage gate hook covers Write and Edit only, and it allows the write if it cannot run its check, so it is an early warning. The real control is `scripts/approve.py` and `scripts/check_approval.py`, which refuse to proceed without a valid approval.
+
 Agents: `prd-writer` (problem framing, PRD draft, PRD revision) and `prd-auditor` (read-only, returns audit JSON). The verdict is computed by script, not by the auditor.
 
 ## Stage 2: UX (M5)

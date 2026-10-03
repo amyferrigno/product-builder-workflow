@@ -31,7 +31,10 @@ SPEC_SUBHEADINGS = ["Components", "Copy", "Interactions", "Analytics events"]
 
 SCREEN_FILE_RE = re.compile(r'^SCR-(\d{3})-[a-z0-9]+(?:-[a-z0-9]+)*\.html$')
 REQ_ID_RE = re.compile(r'^REQ-\d{3}$')
-COLOUR_RE = re.compile(r'(?<![\w"\'/])#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(', re.IGNORECASE)
+COLOUR_RE = re.compile(r'(?<![\w/])#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(', re.IGNORECASE)
+ANCHOR_HREF_RE = re.compile(r'\bhref\s*=\s*(?:"#[^"]*"|\'#[^\']*\')', re.IGNORECASE)
+URL_RE = re.compile(r'https?://|(?:^|[\s"\'(=,])//[\w-]+\.[\w-]+', re.IGNORECASE)
+HIDDEN_TAGS = {"script", "style", "template"}
 VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
     "meta", "param", "source", "track", "wbr",
@@ -173,6 +176,7 @@ class ScreenParser(HTMLParser):
         self.styles: List[str] = []
         self.hrefs: List[str] = []
         self.external: List[str] = []
+        self.urls: List[str] = []
         self.label_for: Set[str] = set()
         self.controls: List[Tuple[str, str, str]] = []
         self.images_without_alt = 0
@@ -198,11 +202,18 @@ class ScreenParser(HTMLParser):
                 self.hrefs.append(value)
             if value.lower().startswith(("http://", "https://", "//")):
                 self.external.append(f"<{tag} {attr}=\"{value}\">")
+        for attr, raw in a.items():
+            if attr.lower().startswith("xmlns"):
+                continue
+            if attr in ("src", "href") and raw.strip().lower().startswith(("http://", "https://", "//")):
+                continue
+            if URL_RE.search(raw):
+                self.urls.append(f"<{tag} {attr}>")
         if tag == "script" and "src" in a and not a["src"].lower().startswith(("http://", "https://", "//")):
             self.external.append("<script src>")
         if tag == "link" and "stylesheet" in a.get("rel", "").lower():
             self.external.append("<link rel=\"stylesheet\">")
-        if tag in ("title", "style", "button", "a"):
+        if tag in ("title", "style", "button", "a", "script"):
             item = {"kind": tag, "text": "", "aria": a.get("aria-label", "").strip()}
         elif tag == "section" and a.get("data-state") is not None and any(
             e["tag"] == "main" for e in self.stack
@@ -233,15 +244,22 @@ class ScreenParser(HTMLParser):
             self.title = text
         elif kind == "style":
             self.styles.append(item["text"])
+            if URL_RE.search(item["text"]):
+                self.urls.append("<style> content")
+        elif kind == "script":
+            if URL_RE.search(item["text"]):
+                self.urls.append("inline <script> content")
         elif kind == "state":
             self.states.append({"id": item["id"], "name": item["name"], "text": text})
         elif not text and not item["aria"]:
             self.textless.append(kind)
 
     def handle_data(self, data: str) -> None:
+        hidden = any(e["tag"] in HIDDEN_TAGS for e in self.stack)
         for entry in self.stack:
-            if entry["item"]:
-                entry["item"]["text"] += data
+            item = entry["item"]
+            if item and not (hidden and item["kind"] == "state"):
+                item["text"] += data
 
     def close(self) -> None:
         super().close()
@@ -288,6 +306,8 @@ def check_screen(
 
     for ref in p.external:
         errors.append(f"{where}: external resource not allowed: {ref}")
+    for ref in p.urls:
+        errors.append(f"{where}: external URL not allowed in {ref}")
 
     tokens_ok = bool(p.styles) and p.styles[0].strip().startswith(tokens.strip())
     if not tokens_ok:
@@ -295,6 +315,7 @@ def check_screen(
     outside = text
     if tokens_ok:
         outside = text.replace(tokens.strip(), "", 1)
+    outside = ANCHOR_HREF_RE.sub('href=""', outside)
     if COLOUR_RE.search(outside):
         errors.append(f"{where}: colour literal outside the tokens block (use var(--...))")
 
@@ -405,8 +426,9 @@ def check_index(
         text = (ux_dir / "index.html").read_text(encoding="utf-8")
     except OSError:
         return ["index.html: file not found"]
-    links = set(parse_html(text).hrefs)
-    errors: List[str] = []
+    parsed = parse_html(text)
+    links = set(parsed.hrefs)
+    errors: List[str] = [f"index.html: external URL not allowed in {ref}" for ref in parsed.urls]
     for scr_id, filename in screen_names.items():
         target = f"screens/{filename}"
         if target not in links and not any(link.startswith(target + "#") for link in links):

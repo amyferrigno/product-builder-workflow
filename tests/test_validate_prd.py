@@ -1174,6 +1174,33 @@ def test_6b_real_quote_passes_in_every_style(style):
     assert code == 0, stdout
 
 
+@pytest.mark.parametrize("left,right", [("\u201e", "\u201c"), ("\u201e", "\u201d")])
+def test_6b_invented_german_low_quote_fails(left, right):
+    prd = _with_6b_text(f"A customer said {left}{INVENTED_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert INVENTED_MESSAGE in stdout
+
+
+@pytest.mark.parametrize("left,right", [("\u201e", "\u201c"), ("\u201e", "\u201d")])
+def test_6b_real_german_low_quote_passes(left, right):
+    prd = _with_6b_text(f"A customer said {left}{REAL_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 0, stdout
+
+
+@pytest.mark.parametrize("left,right", [
+    ("\u00bb", "\u00ab"),  # reversed guillemets
+    ("\u2039", "\u203a"),  # single angle quotes
+    ("\u300c", "\u300d"),  # CJK corner brackets
+])
+def test_6b_invented_quote_fails_in_other_quote_marks(left, right):
+    prd = _with_6b_text(f"A customer said {left}{INVENTED_QUOTE}{right} (AN-001).")
+    code, stdout, _ = _validate_variant(prd)
+    assert code == 1
+    assert INVENTED_MESSAGE in stdout
+
+
 def test_6b_invented_blockquote_fails():
     prd = _with_6b_text(f"\n\n> {INVENTED_QUOTE}\n> (AN-001)")
     code, stdout, _ = _validate_variant(prd)

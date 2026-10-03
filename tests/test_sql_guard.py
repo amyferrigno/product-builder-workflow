@@ -252,6 +252,28 @@ def test_cli_allows_aggregate_query():
     assert "Traceback" not in stderr
 
 
+@pytest.mark.parametrize("sql", [
+    'SELECT MAX(email) FROM"customers"',
+    "SELECT MAX(full_name), MAX(email), MAX(phone), COUNT(*) FROM`customers`",
+    'SELECT MAX(email) FROM customers"c"',
+    'SELECT MAX(c.email) FROM accounts a JOIN"customers"c ON c.account_id=a.account_id',
+])
+def test_quoted_identifier_does_not_fuse_with_neighbours(sql):
+    errors = guard(sql)
+    assert "PII table 'customers' allows only COUNT aggregates (MAX is not allowed)" in errors
+
+
+@pytest.mark.parametrize("quote", ['"', "`"])
+def test_cte_followed_by_fused_update_is_rejected(quote):
+    sql = f"WITH t AS (SELECT COUNT(*) FROM accounts) UPDATE{quote}accounts{quote}SET plan='x'"
+    assert guard(sql) == ["forbidden keyword: UPDATE"]
+
+
+def test_quoted_digit_limit_is_rejected():
+    errors = guard('SELECT COUNT(*) FROM accounts LIMIT"5"')
+    assert errors == ["LIMIT must be an integer, optionally followed by OFFSET and an integer"]
+
+
 def test_cli_rejects_mutating_query_with_one_error_per_line():
     code, stdout, stderr = run_cli("--sql", "DELETE FROM accounts")
     assert code == 1

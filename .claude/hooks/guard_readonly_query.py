@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """
+EARLY WARNING, NOT THE CONTROL: this hook is a best-effort text check that stops obvious
+mistakes before a tool runs. Enforcement is the provider (the sqlite authorizer in the mock
+warehouse; a read-only role with PII-free views for real warehouses).
+
 PreToolUse hook that blocks mutating or non-aggregate SQL.
 Reads the tool call from stdin as JSON.
   - Bash: looks for a --sql argument in tool_input.command (shlex.split, tolerant of failure).
@@ -25,6 +29,8 @@ from pathlib import Path
 PROJECT_DIR = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path(__file__).resolve().parent.parent.parent)
 MCP_SQL_FIELDS = ("sql", "query", "statement", "sql_query")
 _IDENT = r"[\w.\"`\[\]]+"
+# A possibly qualified, possibly quoted name: accounts, "my table", `t`, [dbo].[my table]
+_QNAME = r"(?:\"[^\"]+\"|`[^`]+`|\[[^\]]+\]|[\w.]+)+"
 _OBJECTS = (
     r"(?:OR|TABLE|TEMP|TEMPORARY|VIEW|MATERIALIZED|INDEX|UNIQUE|SCHEMA|DATABASE|USER|ROLE|FUNCTION|PROCEDURE"
     r"|TRIGGER|SEQUENCE|EXTENSION|TYPE|DOMAIN|POLICY|VIRTUAL|EXTERNAL|STAGE|WAREHOUSE|COLUMN)"
@@ -35,9 +41,12 @@ SQL_STATEMENT_PATTERNS = [
         r"^SELECT\b.+?\bFROM\b",
         r"^WITH\s+(?:RECURSIVE\s+)?" + _IDENT + r"\s+AS\s*\(",
         r"^INSERT\s+(?:OR\s+\w+\s+)?INTO\b",
-        r"^UPDATE\s+" + _IDENT + r"(?:\s+(?:AS\s+)?\w+)?\s+SET\b",
+        r"^INSERT\s+" + _QNAME + r"\s*(?:VALUES\b|SELECT\b|DEFAULT\b|\()",
+        r"^UPDATE\b(?:\s+OR\s+\w+)?\s*" + _QNAME + r"(?:\s+(?:AS\s+)?\w+)?\s*SET\b",
         r"^DELETE\s+FROM\b",
+        r"^DELETE\s+" + _QNAME + r"\s*WHERE\b",
         r"^MERGE\s+INTO\b",
+        r"^MERGE\s+" + _QNAME + r"\s+USING\b",
         r"^(?:DROP|ALTER|CREATE)\s+" + _OBJECTS + r"\b",
         r"^TRUNCATE\s+(?:TABLE\s+\S|" + _IDENT + r"\s*(?:$|CASCADE\b|RESTART\b|CONTINUE\b))",
         r"^GRANT\b.+?\b(?:ON|TO)\b",

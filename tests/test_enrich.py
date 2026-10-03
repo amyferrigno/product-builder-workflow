@@ -128,7 +128,7 @@ def test_bad_templates_are_refused_with_one_line(tmp_path):
     cases = {
         "{n} tickets": "claim template must contain {value} or {value_pct}",
         "{value} {nope}": "unknown placeholder '{nope}' in claim template",
-        "{value_pct}k tickets": "claim template must not put a magnitude word (k, m, bn, thousand, million, billion) after a number",
+        "{value_pct}k tickets": "claim template must not put a magnitude word (k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a number",
         "{value}% of tickets": "% may follow only {value_pct}",
     }
     queries = make_queries_dir(tmp_path)
@@ -302,3 +302,57 @@ def test_repo_query_library_and_registry_are_untouched_by_tests(tmp_path):
     assert dir_hash(real_queries) == before
     registry = yaml.safe_load((REPO_ROOT / "connectors" / "registry.yaml").read_text())
     assert all(p["enabled"] is False for p in registry["providers"])
+
+
+def cache_files(tmp_path):
+    return sorted((tmp_path / "cache").glob("*.json"))
+
+
+def test_edited_library_query_is_not_served_from_cache(tmp_path):
+    run_dir = make_run(tmp_path)
+    queries = make_queries_dir(tmp_path)
+    code, stdout, stderr = enrich(tmp_path, run_dir, *share_args(), queries=queries)
+    assert code == 0, stderr
+    first = json.loads(Path(json.loads(stdout)["path"]).read_text())
+
+    sql_file = queries / "ticket_share_by_category.sql"
+    sql_file.write_text(sql_file.read_text() + "\n-- edited after the first run\n")
+    new_hash = hashlib.sha256(sql_file.read_text().encode()).hexdigest()
+    assert new_hash != first["query_hash"]
+
+    code, stdout, stderr = enrich(tmp_path, run_dir, *share_args(), queries=queries)
+    assert code == 0, stderr
+    second = json.loads(Path(json.loads(stdout)["path"]).read_text())
+    assert second["query_hash"] == new_hash
+    assert second["run_at"] != first["run_at"]  # re-run, not served from cache
+    assert len(cache_files(tmp_path)) == 2
+
+
+def test_non_numeric_value_is_refused_and_not_cached(tmp_path):
+    run_dir = make_run(tmp_path)
+    sql = "SELECT MAX(category) AS top_category FROM support_tickets"
+    code, _, stderr = enrich(tmp_path, run_dir, "--sql", sql, claim="{value} tickets")
+    assert code == 1
+    assert stderr.strip() == "provider value is not a number"
+    assert cache_files(tmp_path) == []
+    assert not (run_dir / "03-evidence").exists()
+
+
+def test_provider_query_hash_mismatch_is_refused(tmp_path):
+    run_dir = make_run(tmp_path)
+    stub = tmp_path / "stub_provider.py"
+    stub.write_text(
+        "import json, sys\n"
+        "json.load(sys.stdin)\n"
+        "print(json.dumps({'ok': True, 'rows': [{'share': 0.5, 'total_tickets': 10}], 'n': 1,"
+        " 'run_at': '2026-01-01T00:00:00+00:00', 'query_hash': 'f' * 64, 'caveats': []}))\n"
+    )
+    registry = tmp_path / "registry.yaml"
+    registry.write_text(yaml.safe_dump({"providers": [{
+        "id": "mock_warehouse", "kind": "script", "enabled": True,
+        "command": f"python {stub}", "capabilities": ["sql_readonly"],
+    }]}))
+    code, _, stderr = enrich(tmp_path, run_dir, *share_args(), "--registry", str(registry))
+    assert code == 1
+    assert stderr.strip() == "provider query_hash does not match the library query (stale or wrong query)"
+    assert not (run_dir / "03-evidence").exists()

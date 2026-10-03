@@ -2,6 +2,8 @@
 
 import csv
 import json
+import shutil
+import sqlite3
 import sys
 import textwrap
 from pathlib import Path
@@ -304,7 +306,7 @@ def test_mock_warehouse_missing_bind_param(tmp_path):
 
 def test_mock_warehouse_allows_aggregate_on_pii_table(tmp_path):
     """Aggregates over the PII table are allowed; only row-level reads are refused."""
-    sql = "SELECT COUNT(*) AS c, COUNT(DISTINCT email) AS e FROM customers"
+    sql = "SELECT COUNT(*) AS c FROM customers"
     output = run_provider("mock_warehouse", adhoc(sql), MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"))
     assert output["rows"][0]["c"] == len(read_csv("customers.csv"))
 
@@ -399,3 +401,210 @@ def test_library_queries_pass_the_guard():
     for query in library:
         sql = (queries_dir / query["file"]).read_text()
         assert check_sql(sql, ["customers"], 500) == [], query["id"]
+
+
+# --- The database enforces read-only and PII rules (sqlite authorizer) ---
+sys.path.insert(0, str(REPO_ROOT / "connectors" / "providers"))
+import mock_warehouse  # noqa: E402
+
+NOT_AUTHORIZED = "query not authorized: reads a PII column or is not read-only"
+PERSONAL_VALUES = ("example.invalid", "Test Person", "+00")
+
+PII_BYPASS_SQL = [
+    'SELECT MAX(email) FROM"customers"',
+    "SELECT MAX(full_name), MAX(email), MAX(phone), COUNT(*) FROM`customers`",
+    'SELECT MAX(email) FROM customers"c"',
+    'SELECT MAX(c.email) FROM accounts a JOIN"customers"c ON c.account_id=a.account_id',
+    "SELECT COUNT(CASE WHEN email LIKE 'person1@%' THEN 1 END) FROM customers",
+    "SELECT COUNT(*) FROM customers WHERE customer_id='C001' AND substr(email,1,1)='p'",
+    "SELECT COUNT(*) FROM support_tickets t JOIN customers c ON c.customer_id='C002' "
+    "WHERE t.rowid <= unicode(substr(c.email,7,1))",
+    "SELECT COUNT(*) FROM customers ORDER BY email",
+    "SELECT MAX(sql) FROM sqlite_master",
+    "SELECT COUNT(*) AS [a'], (SELECT group_concat(email) FROM customers) AS [b'] FROM accounts",
+    "SELECT email, COUNT(*) OVER () FROM customers",
+]
+MUTATION_SQL = [
+    "UPDATE\"accounts\"SET plan='x'",
+    "WITH t AS (SELECT COUNT(*) FROM accounts) UPDATE\"accounts\"SET plan='x'",
+    "DELETE FROM accounts",
+    "DROP TABLE accounts",
+    "INSERT INTO accounts VALUES ('x','y','z','w')",
+    "ATTACH DATABASE ':memory:' AS x",
+    "PRAGMA table_info(customers)",
+]
+COUNT_ACCOUNTS = "SELECT COUNT(*) AS c FROM accounts"
+
+
+def assert_nothing_personal(text):
+    for value in PERSONAL_VALUES:
+        assert value not in text, value
+
+
+def assert_cache_has_nothing_personal(cache_dir):
+    for f in Path(cache_dir).rglob("*"):
+        if f.is_file():
+            assert_nothing_personal(f.read_text())
+
+
+def accounts_count_via_provider(cache_dir):
+    output = run_provider("mock_warehouse", adhoc(COUNT_ACCOUNTS), MOCK_REGISTRY, MOCK_CONFIG, str(cache_dir))
+    return output["rows"][0]["c"]
+
+
+@pytest.mark.parametrize("sql", PII_BYPASS_SQL)
+def test_provider_refuses_pii_bypass_and_leaks_nothing(tmp_path, sql):
+    cache = tmp_path / "cache"
+    with pytest.raises(ProviderError) as exc:
+        run_provider("mock_warehouse", adhoc(sql), MOCK_REGISTRY, MOCK_CONFIG, str(cache))
+    assert str(exc.value).startswith("provider 'mock_warehouse' refused the request: ")
+    assert_nothing_personal(str(exc.value))
+    assert_cache_has_nothing_personal(cache)
+    assert not list(cache.glob("*.json"))
+
+
+@pytest.fixture
+def bypass_guard(monkeypatch):
+    """Run the provider module's query code with the text guard switched off."""
+    monkeypatch.setenv("PM_CONFIG", MOCK_CONFIG)
+    monkeypatch.setattr(mock_warehouse, "check_sql", lambda *args, **kwargs: [])
+
+
+@pytest.mark.parametrize("sql", PII_BYPASS_SQL)
+def test_authorizer_refuses_pii_bypass_when_text_guard_misses(bypass_guard, sql):
+    out = mock_warehouse.build_output(adhoc(sql))
+    assert out["ok"] is False
+    assert out["rows"] == []
+    assert_nothing_personal(json.dumps(out["error"]))
+    assert out["error"] == NOT_AUTHORIZED or out["error"].startswith("query failed: ")
+
+
+@pytest.mark.parametrize("sql", [s for s in PII_BYPASS_SQL if "customers\"c\"" not in s])
+def test_authorizer_message_is_exact_for_pii_reads(bypass_guard, sql):
+    assert mock_warehouse.build_output(adhoc(sql))["error"] == NOT_AUTHORIZED
+
+
+@pytest.mark.parametrize("sql", MUTATION_SQL)
+def test_authorizer_refuses_mutations_when_text_guard_misses(bypass_guard, sql):
+    out = mock_warehouse.build_output(adhoc(sql))
+    assert out["ok"] is False
+    assert out["error"] == NOT_AUTHORIZED
+    assert mock_warehouse.build_output(adhoc(COUNT_ACCOUNTS))["rows"] == [{"c": len(read_csv("accounts.csv"))}]
+
+
+@pytest.mark.parametrize("sql", MUTATION_SQL)
+def test_provider_refuses_mutations_and_data_is_unchanged(tmp_path, sql):
+    cache = tmp_path / "cache"
+    with pytest.raises(ProviderError) as exc:
+        run_provider("mock_warehouse", adhoc(sql), MOCK_REGISTRY, MOCK_CONFIG, str(cache))
+    assert str(exc.value).startswith("provider 'mock_warehouse' refused the request: ")
+    assert not list(cache.glob("*.json"))
+    assert accounts_count_via_provider(cache) == len(read_csv("accounts.csv"))
+
+
+@pytest.mark.parametrize("sql", MUTATION_SQL)
+def test_mutation_on_one_connection_leaves_the_rows_unchanged(sql):
+    conn = mock_warehouse.load_warehouse()
+    conn.set_authorizer(mock_warehouse.make_authorizer(["customers"]))
+    with pytest.raises(sqlite3.DatabaseError, match="not authorized"):
+        conn.execute(sql).fetchall()
+    assert conn.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == len(read_csv("accounts.csv"))
+    conn.close()
+
+
+@pytest.mark.parametrize("function", [
+    "load_extension", "readfile", "writefile", "edit", "fts3_tokenizer", "pragma_table_info", "LOAD_EXTENSION",
+])
+def test_authorizer_denies_dangerous_functions(function):
+    authorizer = mock_warehouse.make_authorizer(["customers"])
+    assert authorizer(sqlite3.SQLITE_FUNCTION, None, function, None, None) == sqlite3.SQLITE_DENY
+    assert authorizer(sqlite3.SQLITE_FUNCTION, None, "count", None, None) == sqlite3.SQLITE_OK
+
+
+def test_dangerous_function_call_is_refused_end_to_end(bypass_guard):
+    out = mock_warehouse.build_output(adhoc("SELECT COUNT(*), load_extension('x') FROM accounts"))
+    assert out["ok"] is False
+    assert out["error"] in (NOT_AUTHORIZED, "query failed: no such function: load_extension")
+
+
+def test_authorizer_denies_a_non_numeric_cell_when_the_query_names_a_pii_table(bypass_guard, monkeypatch):
+    monkeypatch.setattr(mock_warehouse, "make_authorizer", lambda pii_tables: (lambda *args: sqlite3.SQLITE_OK))
+    out = mock_warehouse.build_output(adhoc("SELECT MAX(email) FROM customers"))
+    assert out["ok"] is False
+    assert out["error"] == NOT_AUTHORIZED
+    assert_nothing_personal(json.dumps(out["error"]))
+
+
+def test_row_count_of_a_pii_table_is_allowed(tmp_path):
+    output = run_provider(
+        "mock_warehouse", adhoc("SELECT COUNT(*) FROM customers"),
+        MOCK_REGISTRY, MOCK_CONFIG, str(tmp_path / "c"),
+    )
+    assert list(output["rows"][0].values()) == [80]
+
+
+def test_library_queries_return_the_same_values_under_the_authorizer(tmp_path):
+    cache = str(tmp_path / "c")
+    share = run_provider("mock_warehouse", SHARE_REQUEST, MOCK_REGISTRY, MOCK_CONFIG, cache)
+    tickets = [t for t in read_csv("support_tickets.csv") if "2025-07" <= t["created_month"] <= "2025-12"]
+    hits = sum(t["category"] == "scheduling_conflict" for t in tickets)
+    assert share["rows"][0]["share"] == pytest.approx(hits / len(tickets))
+    assert share["rows"][0]["total_tickets"] == len(tickets)
+    avg = run_provider(
+        "mock_warehouse",
+        {"question": "q", "query_id": "avg_messages_per_meeting", "params": {"segment": "smb"}},
+        MOCK_REGISTRY, MOCK_CONFIG, cache,
+    )
+    assert avg["rows"][0]["n_meetings"] > 0 and avg["rows"][0]["avg_messages"] > 0
+    median = run_provider(
+        "mock_warehouse",
+        {"question": "q", "query_id": "median_minutes_to_confirm", "params": {"segment": "mid_market"}},
+        MOCK_REGISTRY, MOCK_CONFIG, cache,
+    )
+    assert median["rows"][0]["n_meetings"] > 0 and median["rows"][0]["median_minutes"] > 0
+
+
+def test_sqlite_reports_an_empty_column_name_for_count_star():
+    """The authorizer relies on this: COUNT(*) reads no named column, COUNT(col) does."""
+    seen = []
+
+    def spy(action, arg1, arg2, db_name, trigger):
+        if action == sqlite3.SQLITE_READ:
+            seen.append((arg1, arg2))
+        return sqlite3.SQLITE_OK
+
+    conn = mock_warehouse.load_warehouse()
+    conn.set_authorizer(spy)
+    conn.execute("SELECT COUNT(*) FROM customers").fetchall()
+    assert seen == [("customers", "")]
+    seen.clear()
+    conn.execute("SELECT COUNT(email) FROM customers").fetchall()
+    assert seen == [("customers", "email")]
+    conn.close()
+
+
+# --- Cache key includes the query text ---
+def make_queries_copy(tmp_path):
+    queries = tmp_path / "queries"
+    shutil.copytree(REPO_ROOT / "connectors" / "queries", queries)
+    return queries
+
+
+def test_cache_salt_changes_the_cache_key(tmp_path):
+    cache = tmp_path / "cache"
+    for salt in ("aaa", "bbb"):
+        run_provider("mock_warehouse", SHARE_REQUEST, MOCK_REGISTRY, MOCK_CONFIG, str(cache), cache_salt=salt)
+    assert len(list(cache.glob("*.json"))) == 2
+    _, meta = run_provider(
+        "mock_warehouse", SHARE_REQUEST, MOCK_REGISTRY, MOCK_CONFIG, str(cache),
+        return_meta=True, cache_salt="aaa",
+    )
+    assert meta == {"cached": True}
+
+
+def test_cache_filter_false_writes_no_cache_file(tmp_path):
+    cache = tmp_path / "cache"
+    run_provider(
+        "mock_warehouse", SHARE_REQUEST, MOCK_REGISTRY, MOCK_CONFIG, str(cache), cache_filter=lambda out: False,
+    )
+    assert not list(cache.glob("*.json"))

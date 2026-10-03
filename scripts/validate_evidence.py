@@ -15,7 +15,7 @@ Claim number rules (the same ones scripts/enrich.py uses to render a claim templ
   {value_pct}  value x 100 rounded to at most 1 decimal, trailing .0 trimmed; only when
                0 <= value <= 1, and only written directly before % or the word "percent"
   {n}          the n integer
-No rounding slack and no magnitude words (k, m, bn, thousand, million, billion) after a number.
+No rounding slack and no magnitude words (k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a number.
 
 Also holds the helpers scripts/enrich.py shares: load_library, problem_ids, claim_number_errors,
 render_claim, query_hash_of, param_names.
@@ -41,7 +41,7 @@ from validate_problem import parse_problem_md
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 NUMBER_RE = re.compile(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)?")
-MAGNITUDE_WORDS = r"(?:k|m|bn|thousand|million|billion)"
+MAGNITUDE_WORDS = r"(?:k|m|mn|mm|bn|x|hundred|thousand|million|billion|times)"
 MAGNITUDE_AFTER_RE = re.compile(r"\s*" + MAGNITUDE_WORDS + r"\b", re.IGNORECASE)
 PERCENT_AFTER_RE = re.compile(r"\s*%|\s+percent\b", re.IGNORECASE)
 PLACEHOLDER_RE = re.compile(r"\{([^{}]*)\}")
@@ -140,7 +140,7 @@ def render_claim(template: str, value: float, n: int) -> str:
     for m in PLACEHOLDER_RE.finditer(template):
         rest = template[m.end():]
         if MAGNITUDE_AFTER_RE.match(rest):
-            raise ValueError("claim template must not put a magnitude word (k, m, bn, thousand, million, billion) after a number")
+            raise ValueError("claim template must not put a magnitude word (k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a number")
         has_percent = PERCENT_AFTER_RE.match(rest) is not None
         if m.group(1) == "value_pct":
             if not has_percent:

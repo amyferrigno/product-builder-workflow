@@ -28,9 +28,9 @@ How the agent calls it:
 - Parameter names, formats, allowed values and a working `example` are in `connectors/queries/index.yaml`. Never guess parameter values.
 - `--period` and `--segment` are labels stored on the card; they should mirror the params used.
 - Example, share of tickets:
-  `.venv/bin/python scripts/enrich.py run <run_dir> --provider mock_warehouse --query-id ticket_share_by_category --params '{"category": "scheduling_conflict", "period_start": "2025-07", "period_end": "2025-12"}' --question "What share of tickets are scheduling conflicts?" --claim "{value_pct}% of {n} tickets are scheduling conflicts" --supports PB-1 --period 2025-07..2025-12`
+  `.venv/bin/python scripts/enrich.py run <run_dir> --provider mock_warehouse --query-id ticket_share_by_category --params '{"category": "scheduling_conflict", "period_start": "2025-07", "period_end": "2025-12"}' --question "What share of tickets are scheduling conflicts?" --claim "{value_pct}% of {n} tickets are scheduling conflicts" --supports PB-1 --period 2025-07..2025-12 --registry <registry_path> --config <config_path>`
 - Example, median for a segment:
-  `.venv/bin/python scripts/enrich.py run <run_dir> --provider mock_warehouse --query-id median_minutes_to_confirm --params '{"segment": "enterprise"}' --question "How long to confirm?" --claim "Median is {value} minutes over {n} meetings" --supports PB-1 --segment enterprise`
+  `.venv/bin/python scripts/enrich.py run <run_dir> --provider mock_warehouse --query-id median_minutes_to_confirm --params '{"segment": "enterprise"}' --question "How long to confirm?" --claim "Median is {value} minutes over {n} meetings" --supports PB-1 --segment enterprise --registry <registry_path> --config <config_path>`
 - On `query returned no rows for these params`: check the allowed values once, retry once, then record an evidence gap.
 
 ### Step 3: Validate

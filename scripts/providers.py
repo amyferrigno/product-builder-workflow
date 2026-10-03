@@ -4,7 +4,7 @@ Run an evidence provider from the registry.
 
     run_provider(provider_id, request, registry_path="connectors/registry.yaml",
                  config_path="pm.config.yaml", cache_dir=".cache/providers",
-                 return_meta=False)
+                 return_meta=False, cache_salt="", cache_filter=None)
 
 `request` follows schemas/provider-io.schema.json (input). Only `kind: script`
 providers run here (command split with shlex, request JSON on stdin, output
@@ -17,8 +17,11 @@ output schema forbids extra keys, cache hits are reported on a second path:
 with return_meta=True the function returns (output, {"cached": bool}).
 
 Cache: JSON {cached_at, output} files under cache_dir, keyed by sha256 of
-provider id + query_id + sorted params, valid for data.cache_ttl_hours.
-Only ok outputs are cached. Relative paths are resolved against the repo root.
+provider id + query_id + sorted params + cache_salt, valid for data.cache_ttl_hours.
+Callers pass the sha256 of the query text as cache_salt (ad-hoc SQL is already in params), so an
+edited library query never serves a stale result. Only ok outputs are cached, and only when
+cache_filter (an optional callable taking the output dict) returns True. Relative paths are
+resolved against the repo root.
 
 Every failure raises ProviderError with a one-line message. A provider that
 answers {"ok": false, "error": ...} is turned into a ProviderError too.
@@ -32,7 +35,7 @@ import os
 import subprocess
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 try:
     import yaml
@@ -104,10 +107,10 @@ def load_config(path: Union[str, Path] = "pm.config.yaml") -> Dict[str, Any]:
     return config
 
 
-def _cache_key(provider_id: str, request: Dict[str, Any]) -> str:
+def _cache_key(provider_id: str, request: Dict[str, Any], cache_salt: str = "") -> str:
     text = provider_id + "\n" + request["query_id"] + "\n" + json.dumps(
         request["params"], sort_keys=True, default=str
-    )
+    ) + "\n" + cache_salt
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -194,6 +197,8 @@ def run_provider(
     config_path: Union[str, Path] = "pm.config.yaml",
     cache_dir: Union[str, Path] = ".cache/providers",
     return_meta: bool = False,
+    cache_salt: str = "",
+    cache_filter: Optional[Callable[[Dict[str, Any]], bool]] = None,
 ) -> Union[Dict[str, Any], Tuple[Dict[str, Any], Dict[str, bool]]]:
     """Run a script provider (see module docstring). Raises ProviderError."""
     registry = load_registry(registry_path)
@@ -212,7 +217,7 @@ def run_provider(
         raise ProviderError(f"request is invalid: {errors[0].message}")
 
     data = config["data"]
-    cache_file = resolve_path(cache_dir) / f"{_cache_key(provider_id, request)}.json"
+    cache_file = resolve_path(cache_dir) / f"{_cache_key(provider_id, request, cache_salt)}.json"
 
     cached = _read_cache(cache_file, data["cache_ttl_hours"])
     if cached is not None:
@@ -225,5 +230,6 @@ def run_provider(
         output["rows"] = output["rows"][:max_rows]
         output["caveats"] = list(output["caveats"]) + [f"rows truncated to {max_rows}"]
 
-    _write_cache(cache_file, output)
+    if cache_filter is None or cache_filter(output):
+        _write_cache(cache_file, output)
     return (output, {"cached": False}) if return_meta else output

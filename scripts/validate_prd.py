@@ -243,11 +243,16 @@ def extraction_item_texts(extraction: dict) -> Dict[str, str]:
 
 # Quote styles: double (straight or curly, mixed pairs allowed), single (straight or curly,
 # mixed pairs allowed; an opening single quote must not follow a word character and a closing one
-# must not be followed by one, so don't and team's are not quote marks) and guillemets.
+# must not be followed by one, so don't and team's are not quote marks), guillemets in both
+# directions, German low quotes, single angle quotes and CJK corner brackets.
 QUOTED_RE = re.compile(
     '["\u201c]([^"\u201c\u201d]+)["\u201d]'
     "|(?<!\\w)['\u2018](?=\\S)(.+?)(?<=\\S)['\u2019](?!\\w)"
     "|\u00ab([^\u00bb]+)\u00bb"
+    "|\u00bb([^\u00ab]+)\u00ab"
+    "|\u201e([^\u201c\u201d]+)[\u201c\u201d]"
+    "|\u2039([^\u203a]+)\u203a"
+    "|\u300c([^\u300d]+)\u300d"
 )
 BLOCKQUOTE_RE = re.compile(r'^\s*>[>\s]*(.*)$')
 CITATION_GROUP_RE = re.compile(r'[(\[][^()\[\]]*\b[A-Z]+-\d+\b[^()\[\]]*[)\]]')

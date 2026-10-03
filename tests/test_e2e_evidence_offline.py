@@ -41,7 +41,7 @@ def expected_share_and_total():
 
 def test_offline_evidence_pipeline_on_clean_meeting(tmp_path):
     queries_before = tree_state(REPO_ROOT / "connectors" / "queries")
-    cache_before = tree_state(REPO_ROOT / ".cache")
+    default_cache_before = {name for name, _ in tree_state(REPO_ROOT / ".cache")}
     registry_before = (REPO_ROOT / "connectors" / "registry.yaml").read_bytes()
 
     # Intake and goldens.
@@ -109,4 +109,8 @@ def test_offline_evidence_pipeline_on_clean_meeting(tmp_path):
     assert registry["providers"] and all(p["enabled"] is False for p in registry["providers"])
     assert (REPO_ROOT / "connectors" / "registry.yaml").read_bytes() == registry_before
     assert tree_state(REPO_ROOT / "connectors" / "queries") == queries_before
-    assert tree_state(REPO_ROOT / ".cache") == cache_before
+    # This test's own calls wrote only to its temp cache dir (other tests may use the default cache).
+    own_entries = {f.name for f in cache.glob("*.json")}
+    assert len(own_entries) == 2  # one evidence query, one anecdote pull
+    default_cache_after = {name for name, _ in tree_state(REPO_ROOT / ".cache")}
+    assert not (own_entries & (default_cache_after - default_cache_before))

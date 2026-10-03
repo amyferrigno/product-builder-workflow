@@ -15,8 +15,11 @@ Usage:
                {value_pct} percent; only valid when 0 <= value <= 1
   {n}          the n integer
 The template needs {value} or {value_pct}, no digits of its own, no unknown placeholders, no
-magnitude word (k, m, bn, thousand, million, billion) after a placeholder, and % only after
+magnitude word (k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a placeholder, and % only after
 {value_pct}. The card stores the rendered claim and the template (claim_template).
+The provider's query_hash must equal the sha256 of the query text computed here, else the run is
+refused (stale or wrong query). The cache key includes that hash, and an output whose value cell
+is not a number is never cached (run_provider cache_filter).
 Library query: value comes from the query's value_field in the first row, n from n_field.
 Confidence is high for a reviewed query, low otherwise.
 Ad-hoc (--sql): guarded by sql_guard first, sent to the provider as query_id adhoc_<8 hex>
@@ -47,7 +50,7 @@ from providers import run_provider, ProviderError, load_config, resolve_path
 from sql_guard import check_sql
 from validate_evidence import (
     load_library, problem_ids, claim_number_errors, confidence_for, load_evidence_schema,
-    render_claim, param_names,
+    render_claim, param_names, query_hash_of,
 )
 
 
@@ -137,6 +140,7 @@ def run(args) -> Dict[str, Any]:
         if guard_errors:
             raise EnrichError("\n".join(guard_errors))
         sql_hash = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+        expected_hash = sql_hash
         query_id = f"adhoc_{sql_hash[:8]}"
         request_params["__sql"] = sql
         status = "unreviewed"
@@ -156,6 +160,10 @@ def run(args) -> Dict[str, Any]:
         missing = [p for p in param_names(query) if p not in params]
         if missing:
             raise EnrichError(f"missing params for '{args.query_id}': {', '.join(missing)}")
+        try:
+            expected_hash = query_hash_of(queries_dir, query)
+        except (OSError, KeyError):
+            raise EnrichError(f"Cannot read the library file for query '{args.query_id}'")
         query_id = args.query_id
         status = query.get("status", "unreviewed")
         value_field = query.get("value_field")
@@ -163,13 +171,26 @@ def run(args) -> Dict[str, Any]:
         metric = args.metric or query.get("metric") or query_id
 
     request = {"question": args.question, "query_id": query_id, "params": request_params}
+
+    def numeric_value_cell(out: Dict[str, Any]) -> bool:
+        """Cache only outputs whose value cell is a number (never cache text a provider returned)."""
+        rows = out.get("rows")
+        if not rows or not isinstance(rows[0], dict) or not rows[0]:
+            return False
+        cell = rows[0].get(value_field) if value_field else next(iter(rows[0].values()))
+        return isinstance(cell, (int, float)) and not isinstance(cell, bool)
+
     try:
         output = run_provider(
             args.provider, request,
             registry_path=args.registry, config_path=args.config, cache_dir=args.cache_dir,
+            cache_salt=expected_hash, cache_filter=numeric_value_cell,
         )
     except ProviderError as e:
         raise EnrichError(str(e))
+
+    if output["query_hash"] != expected_hash:
+        raise EnrichError("provider query_hash does not match the library query (stale or wrong query)")
 
     if not output["rows"]:
         raise EnrichError("provider returned no rows")

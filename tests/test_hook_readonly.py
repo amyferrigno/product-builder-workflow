@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).parent.parent
 HOOK = ".claude/hooks/guard_readonly_query.py"
 
@@ -185,3 +187,30 @@ def test_mcp_statement_shapes_are_blocked():
         code, _, stderr = run_hook(mcp({"sql": text}))
         assert code == 2, text
         assert "Traceback" not in stderr
+
+
+def mcp_sql(sql):
+    return {"tool_name": "mcp__warehouse__run_query", "tool_input": {"sql": sql}}
+
+
+@pytest.mark.parametrize("sql", [
+    "UPDATE\"accounts\"SET plan='x'",
+    'UPDATE "my table" SET x = 1',
+    "UPDATE OR IGNORE accounts SET plan='x'",
+    "UPDATE [dbo].[my table] SET x=1",
+    "DELETE accounts WHERE id = 1",
+    "INSERT accounts VALUES (1)",
+    "MERGE accounts USING src ON 1=1",
+])
+def test_blocks_spelling_variants_of_mutations_in_mcp_payload(sql):
+    code, _, stderr = run_hook(mcp_sql(sql))
+    assert code == 2
+    assert "Blocked: query is not allowed" in stderr
+    assert "Traceback" not in stderr
+
+
+@pytest.mark.parametrize("text", ["Update on scheduling complaints", "Delete requests from users"])
+def test_plain_text_search_with_sql_looking_first_word_is_allowed(text):
+    code, _, stderr = run_hook(mcp_sql(text))
+    assert code == 0
+    assert stderr == ""

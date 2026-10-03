@@ -2,6 +2,11 @@
 """
 Read-only SQL guard. Pure standard library so a hook can import it by path.
 
+This is a BEST-EFFORT EARLY WARNING, not the control. Text scanning cannot understand every
+spelling of SQL. Enforcement is the provider: the sqlite authorizer in
+connectors/providers/mock_warehouse.py, or, for real warehouses, a read-only database role
+with PII-free views.
+
 Usage: python scripts/sql_guard.py --sql "SELECT ..." [--config pm.config.yaml]
 Exit 0 if the query is allowed, 1 with one error per line otherwise.
 
@@ -83,7 +88,10 @@ def mask_sql(sql: str) -> str:
             if quote == "'":
                 out.append("''")
             else:
-                out.append(re.sub(r"\W", "_", "".join(text)))
+                ident = re.sub(r"\W", "_", "".join(text))
+                if ident[:1].isdigit():
+                    ident = "_" + ident  # a quoted "5" is a name, not the number 5
+                out.append(" " + ident + " ")  # spaces so it cannot fuse with neighbouring tokens
         elif ch in "[]":
             raise BracketIdentifierError("bracket identifiers are not allowed")
         else:

@@ -27,19 +27,19 @@ This file documents how we build and maintain this agentic PM tool.
 
 ## Repo Layout
 
-- `.claude/agents/`: notes-extractor, prd-writer (3 modes), prd-auditor (read-only), data-enricher (Read, Bash; runs enrich.py), anecdote-curator (Read, Write)
-- `.claude/skills/`: `/pm-prd` (meeting-to-prd), `/pm-audit` (prd-audit), `/pm-approve` (human only), `/pm-enrich` (data-enrichment), `/pm-anecdotes` (customer-anecdotes)
-- `.claude/hooks/`: guard_approvals (blocks writes under approvals/), validate_artifact (runs the PRD validator), guard_readonly_query (blocks mutating or non-aggregate SQL), pii_scan (scans anecdotes and PRD)
+- `.claude/agents/`: notes-extractor, prd-writer (3 modes), prd-auditor (read-only), data-enricher (Read, Bash; runs enrich.py), anecdote-curator (Read, Write), ux-designer (Read, Write, Edit, Bash; design and revision), ux-auditor (read-only)
+- `.claude/skills/`: `/pm-prd` (meeting-to-prd), `/pm-audit` (prd-audit), `/pm-approve` (human only), `/pm-enrich` (data-enrichment), `/pm-anecdotes` (customer-anecdotes), `/pm-ux` (prd-to-ux), `/pm-audit ux` (ux-audit); `/pm-approve ux` is Gate B
+- `.claude/hooks/`: guard_approvals (blocks writes under approvals/), validate_artifact (runs the PRD validator), guard_readonly_query (blocks mutating or non-aggregate SQL), pii_scan (scans anecdotes and PRD), guard_stage_gate (no ux/ writes before PRD approval, no tickets before UX approval)
 - `connectors/`: `registry.yaml` (all disabled), `queries/` (reviewed query library), `providers/` (mock warehouse and anecdotes). Offline demo: `fixtures/registry.mock.yaml` + `fixtures/pm.config.mock.yaml`
 - `schemas/`: JSON Schema for handoff formats (extraction, problem, PRD audit, state, etc.)
-- `scripts/`: intake, validators (extraction, problem, PRD, evidence, anecdotes), render_audit/audit_verdict, approve/check_approval, gate_summary, enrich, anecdotes, providers, sql_guard, pii
-- `templates/`: problem.md, ai-gates.md, prd.md, prd-ai-addendum.md, audit-prd.rubric.yaml
+- `scripts/`: intake, validators (extraction, problem, PRD, evidence, anecdotes), render_audit/audit_verdict, approve/check_approval, gate_summary, enrich, anecdotes, providers, sql_guard, pii, ux_hash, validate_ux, ux_verdict, render_ux_audit, traceability
+- `templates/`: problem.md, ai-gates.md, prd.md, prd-ai-addendum.md, audit-prd.rubric.yaml, ux-tokens.css, ux-screen.html, ux-spec.md, audit-ux.rubric.yaml
 - `fixtures/`: Synthetic meeting notes with golden outputs (golden PRDs and audits for three; `bad-prd/` must fail)
 - `tests/`, `runs/`: Test suite and active run workspaces
 
 Evidence cards come only from `enrich.py`; anecdote quotes are copied unchanged from scrubbed candidates.
 
-Only a human runs `/pm-approve`. The verdict comes from `scripts/render_audit.py`, never from a model.
+Only a human runs `/pm-approve`. The verdict comes from `scripts/render_audit.py` (PRD) or `scripts/render_ux_audit.py` (UX), never from a model.
 
 ## Running Tests
 

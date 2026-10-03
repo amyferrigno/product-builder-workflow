@@ -9,6 +9,8 @@ description: Audit an existing PRD in a run folder (validator, auditor, verdict)
 
 Use it to audit a PRD that already sits in a run folder, for example one a person wrote by hand, or to re-audit after an edit. It does not write or fix the PRD.
 
+To audit UX screens instead, use `/pm-audit ux <run-id>` (skill `ux-audit`).
+
 ## Files the run folder needs
 
 Next to `prd.md`:

@@ -280,3 +280,67 @@ def test_settings_json_is_valid_and_references_four_hooks():
         assert (REPO / ".claude" / "hooks" / script).exists(), f"{script} missing"
     pre_matchers = {entry["matcher"] for entry in settings["hooks"]["PreToolUse"]}
     assert {"Write|Edit", "Bash", "mcp__.*"} <= pre_matchers
+
+
+# --- M5: ux-designer, ux-auditor, new skills ---
+def test_ux_designer_front_matter_and_tier():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "ux-designer.md")
+    assert fm["name"] == "ux-designer"
+    assert fm["description"]
+    assert fm["model"] == _tier_model("ux_designer") == "sonnet"
+    assert {t.strip() for t in fm["tools"].split(",")} == {"Read", "Write", "Edit", "Bash"}
+
+
+def test_ux_designer_has_two_modes_and_runs_validator():
+    body = (REPO / ".claude" / "agents" / "ux-designer.md").read_text()
+    for heading in ("## Mode 1: design", "## Mode 2: revision"):
+        assert heading in body
+    assert "scripts/validate_ux.py" in body
+    assert "lorem ipsum" in body
+    assert "Never touch `prd.md`" in body
+
+
+def test_ux_auditor_front_matter_and_tier():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "ux-auditor.md")
+    assert fm["name"] == "ux-auditor"
+    assert fm["description"]
+    assert fm["model"] == _tier_model("ux_auditor") == "sonnet"
+    tools = {t.strip() for t in fm["tools"].split(",")}
+    assert tools == {"Read"}
+    assert not tools & {"Write", "Edit", "Bash"}
+
+
+def test_ux_auditor_returns_json_only_and_no_verdict():
+    body = (REPO / ".claude" / "agents" / "ux-auditor.md").read_text()
+    assert "ONLY one JSON object" in body
+    assert "schemas/ux-audit.schema.json" in body
+    assert "Do not compute or state the verdict" in body
+
+
+def test_ux_skills_exist_with_matching_name_and_size():
+    for skill in ("prd-to-ux", "ux-audit"):
+        path = REPO / ".claude" / "skills" / skill / "SKILL.md"
+        assert path.exists(), f"{skill} SKILL.md not found"
+        fm = parse_agent_file(path)
+        assert fm["name"] == skill
+        assert fm["description"]
+        assert len(path.read_text().splitlines()) < 200
+
+
+def test_prd_to_ux_skill_never_approves_and_loops():
+    body = (REPO / ".claude" / "skills" / "prd-to-ux" / "SKILL.md").read_text()
+    assert "/pm-ux <run-id>" in body
+    assert "scripts/check_approval.py runs/<run-id> prd" in body
+    assert "scripts/render_ux_audit.py" in body
+    assert "audit.max_revision_loops" in body
+    assert "must never run `scripts/approve.py`" in body
+    assert "/pm-approve ux <run-id>" in body
+
+
+def test_pm_approve_covers_ux_and_stays_human_only():
+    path = REPO / ".claude" / "skills" / "pm-approve" / "SKILL.md"
+    fm = parse_agent_file(path)
+    assert fm["disable-model-invocation"] is True
+    body = path.read_text()
+    assert "/pm-approve ux <run-id>" in body
+    assert "traceability.md" in body

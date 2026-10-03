@@ -1,0 +1,37 @@
+{
+  "run_id": "2026-01-15-ai-clear-fit",
+  "ux_hash": "fab8c24a3305cf40d58c39a0217bb72df1ba3c7f21be242da4c8b259df8ab503",
+  "ai_feature": true,
+  "dimensions": [
+    {
+      "id": "req_coverage",
+      "score": 4,
+      "justification": "All six Must requirements are mapped: REQ-001 to REQ-004 and REQ-008 on SCR-002, REQ-002, REQ-003 and REQ-008 on SCR-001, REQ-005 on SCR-003, and Should requirement REQ-006 on SCR-003."
+    },
+    {
+      "id": "required_states",
+      "score": 4,
+      "justification": "SCR-001, SCR-002 and SCR-003 each have all ten states with non-empty content, and the index links to every one."
+    },
+    {
+      "id": "ai_trust_control_recovery",
+      "score": 3,
+      "justification": "SCR-002 shows the original text beside the draft, a low-confidence warning, direct edit, reject, parse again that keeps the earlier draft, an explanation and a route to manual parsing; confidence is only a High or Low label because the PRD sets no threshold, and the explanation is static example text."
+    },
+    {
+      "id": "accessibility",
+      "score": 3,
+      "justification": "Inputs have labels, buttons and links have text, tables have captions and headers, and the tokens set a 44px target, but colour contrast, focus order and screen reader behaviour of the state sections (SCR-001, SCR-002, SCR-003) were not checked in a rendered page."
+    },
+    {
+      "id": "token_consistency",
+      "score": 4,
+      "justification": "Every screen (SCR-001, SCR-002, SCR-003) and the index use the exact token block and only var(--...) for colour, spacing and radius."
+    },
+    {
+      "id": "copy_clarity",
+      "score": 3,
+      "justification": "Plain copy drawn from the PRD with next steps in the error and empty states of SCR-001 and SCR-002, but the success states of SCR-003 and the 'Message the Engineer Lead' action describe flows the PRD does not fully specify."
+    }
+  ]
+}

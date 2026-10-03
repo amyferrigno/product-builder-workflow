@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SCR-003 Parser quality</title>
+<style>
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f5f7fa;
+  --color-text: #1a1f29;
+  --color-text-muted: #4a5568;
+  --color-primary: #1d4ed8;
+  --color-on-primary: #ffffff;
+  --color-border: #8a94a6;
+  --color-success: #166534;
+  --color-warning: #92400e;
+  --color-danger: #b91c1c;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --radius: 8px;
+  --font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-size-base: 16px;
+  --touch-target-min: 44px;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font-family); font-size: var(--font-size-base); color: var(--color-text); background: var(--color-bg); margin: 0; }
+nav, main { max-width: 760px; margin: 0 auto; padding: var(--space-3); }
+nav { display: flex; flex-wrap: wrap; gap: var(--space-2); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+nav a { color: var(--color-primary); padding: var(--space-2) var(--space-3); min-height: var(--touch-target-min); display: inline-flex; align-items: center; }
+section { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-3); margin-bottom: var(--space-4); }
+section:target { outline: 3px solid var(--color-primary); }
+h1 { font-size: 1.5rem; margin-top: 0; }
+h2 { font-size: 1.1rem; }
+.muted { color: var(--color-text-muted); }
+.tag { display: inline-block; border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-1) var(--space-2); }
+.warn { color: var(--color-warning); border-color: var(--color-warning); font-weight: bold; }
+.ok { color: var(--color-success); font-weight: bold; }
+.err { color: var(--color-danger); font-weight: bold; }
+.box { background: var(--color-surface); border-radius: var(--radius); padding: var(--space-3); margin: var(--space-2) 0; white-space: pre-wrap; }
+.row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.row > * { flex: 1 1 280px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--color-border); padding: var(--space-2); text-align: left; }
+button, a.button { min-height: var(--touch-target-min); padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid var(--color-primary); background: var(--color-bg); color: var(--color-primary); font: inherit; display: inline-flex; align-items: center; cursor: pointer; margin: var(--space-1) var(--space-1) var(--space-1) 0; }
+button.primary, a.primary { background: var(--color-primary); color: var(--color-on-primary); }
+button.danger { border-color: var(--color-danger); color: var(--color-danger); }
+input, select, textarea { min-height: var(--touch-target-min); padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); font: inherit; width: 100%; }
+label { display: block; font-weight: bold; margin-top: var(--space-2); }
+</style>
+</head>
+<body>
+<nav aria-label="States of this screen">
+  <a href="../index.html">Gallery</a>
+  <a href="#state-default">default</a>
+  <a href="#state-loading">loading</a>
+  <a href="#state-empty">empty</a>
+  <a href="#state-error">error</a>
+  <a href="#state-success">success</a>
+  <a href="#state-low-confidence">low-confidence</a>
+  <a href="#state-user-edit">user-edit</a>
+  <a href="#state-regenerate">regenerate</a>
+  <a href="#state-explanation">explanation</a>
+  <a href="#state-escalation">escalation</a>
+</nav>
+<main data-screen="SCR-003">
+  <section id="state-default" data-state="default">
+<h1>Parser quality</h1>
+<p class="muted">Results of the accuracy check on held-out examples, per dimension, against the launch thresholds. Any missed threshold means no launch.</p>
+<table>
+<caption>Accuracy by dimension</caption>
+<thead><tr><th scope="col">Dimension</th><th scope="col">Must-pass threshold</th><th scope="col">Result</th></tr></thead>
+<tbody>
+<tr><td>Constraint extraction accuracy</td><td>Average 3 or above, no type below 2</td><td>Shown when the check has run</td></tr>
+<tr><td>No invented constraints</td><td>4 on every golden case</td><td>Shown when the check has run</td></tr>
+<tr><td>Ambiguity and conflict handling</td><td>Average 3 or above</td><td>Shown when the check has run</td></tr>
+<tr><td>Confidence calibration</td><td>Average 3 or above</td><td>Shown when the check has run</td></tr>
+</tbody></table>
+<h2>Drift and corrections</h2>
+<p>After launch, this screen reports the correction rate and the mix of constraint types over time.</p>
+<p><a class="button" href="SCR-001-review-queue.html">Back to the review queue</a></p>
+  </section>
+  <section id="state-loading" data-state="loading">
+<h1>Parser quality</h1><p role="status">Loading the latest accuracy results.</p>
+  </section>
+  <section id="state-empty" data-state="empty">
+<h1>Parser quality</h1><p>The accuracy check has not run yet, so there are no results. Parsing stays behind human review until the thresholds are met.</p><p><button class="primary">Run the accuracy check</button></p>
+  </section>
+  <section id="state-error" data-state="error">
+<h1>Parser quality</h1><p class="err" role="alert">The accuracy check failed to complete. No results were saved and the previous results are unchanged.</p><p><button class="primary">Run it again</button> <a class="button" href="#state-escalation">Ask the Engineer Lead</a></p>
+  </section>
+  <section id="state-success" data-state="success">
+<h1>Parser quality</h1><p class="ok" role="status">The accuracy check finished and every must-pass threshold is met. Launch can go ahead on this measure.</p><p><a class="button primary" href="#state-default">See the results</a></p>
+  </section>
+  <section id="state-low-confidence" data-state="low-confidence">
+<h1>Parser quality</h1><p class="warn" role="status">A threshold is missed or a result is uncertain, for example a constraint type with few examples. Do not launch until it is resolved.</p><p><a class="button" href="#state-explanation">See why</a> <a class="button" href="#state-escalation">Ask the Engineer Lead</a></p>
+  </section>
+  <section id="state-user-edit" data-state="user-edit">
+<h1>Parser quality</h1>
+<p>Reviewer corrections feed the next monthly update of the parser. You can mark a result for follow-up.</p>
+<label for="p-note">Note for the Engineer Lead</label>
+<textarea id="p-note" rows="3"></textarea>
+<p><button class="primary">Save note</button> <a class="button" href="#state-default">Cancel</a></p>
+  </section>
+  <section id="state-regenerate" data-state="regenerate">
+<h1>Parser quality</h1><p>Run the accuracy check again on the held-out examples. The earlier results are kept for comparison.</p><p><button class="primary">Run the accuracy check again</button> <a class="button" href="#state-default">Keep the earlier results</a></p>
+  </section>
+  <section id="state-explanation" data-state="explanation">
+<h1>Parser quality</h1><h2>How to read these results</h2><p>Each dimension is scored from 1 to 4: 1 is wrong or missing, 2 is weak, 3 meets the minimum, 4 is excellent. The examples used were held out from training, so the scores show how the parser handles requests it has not seen.</p><p><a class="button" href="#state-default">Back to the results</a></p>
+  </section>
+  <section id="state-escalation" data-state="escalation">
+<h1>Parser quality</h1><p>If results look wrong, or drift appears after launch, contact the Engineer Lead. Meanwhile every request keeps going through human review and the manual queue.</p><p><button class="primary">Message the Engineer Lead</button> <a class="button" href="#state-default">Back</a></p>
+  </section>
+</main>
+</body>
+</html>

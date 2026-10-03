@@ -683,3 +683,51 @@ def test_gate_summary_ux_missing_folder_errors(tmp_path):
     code, _, stderr = run_gate_summary(str(run), "ux")
     assert code == 1
     assert "ux folder not found" in stderr
+
+
+# --- Gate C: gate_summary tickets ---------------------------------------------
+
+def _tickets_summary(tmp_path, mutate=None):
+    sys.path.insert(0, str(Path(__file__).parent))
+    from tickets_helpers import make_tickets_run, valid_manifest, write_manifest
+    run = make_tickets_run(tmp_path)
+    if mutate:
+        m = valid_manifest(run, False)
+        mutate(m)
+        write_manifest(run, m)
+    return run, run_gate_summary(str(run), "tickets")
+
+
+def test_gate_summary_tickets_clean(tmp_path):
+    run, (code, stdout, stderr) = _tickets_summary(tmp_path)
+    assert code == 0, stderr
+    manifest = json.loads((run / "tickets.manifest.json").read_text())
+    stories = [c for e in manifest["epics"] for c in e["children"] if c["type"] == "Story"]
+    assert "Tickets Gate Summary" in stdout
+    assert "Epics: 2" in stdout
+    assert f"Stories: {len(stories)}" in stdout
+    assert "Spikes: 1" in stdout
+    assert f"Must requirements covered: {len(stories)} of {len(stories)}" in stdout
+    assert "Definition of Ready errors: none" in stdout
+    assert "tickets.preview.md" in stdout
+    assert "/pm-approve tickets run-1" in stdout
+
+
+def test_gate_summary_tickets_lists_errors(tmp_path):
+    def mutate(m):
+        m["epics"][0]["children"][0]["acceptance_criteria"].pop()
+    _, (code, stdout, _) = _tickets_summary(tmp_path, mutate)
+    assert code == 0
+    assert "Definition of Ready errors (" in stdout
+    assert "T-001" in stdout
+    assert "/pm-approve tickets" not in stdout
+
+
+def test_gate_summary_tickets_missing_manifest_errors(tmp_path):
+    sys.path.insert(0, str(Path(__file__).parent))
+    from tickets_helpers import make_tickets_run
+    run = make_tickets_run(tmp_path)
+    (run / "tickets.manifest.json").unlink()
+    code, _, stderr = run_gate_summary(str(run), "tickets")
+    assert code == 1
+    assert "tickets.manifest.json" in stderr

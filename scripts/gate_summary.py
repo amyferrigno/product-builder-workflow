@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Print a one-screen summary of a PRD artifact.
-Usage: python scripts/gate_summary.py <run_dir> prd|ux
+Usage: python scripts/gate_summary.py <run_dir> prd|ux|tickets
 """
 
 import sys
@@ -269,8 +269,65 @@ def ux_gate_summary(run_dir: str) -> None:
         print(line)
 
 
+def tickets_gate_summary(run_dir: str) -> None:
+    """Print a short summary of the ticket manifest for Human Gate C."""
+    from validate_prd import parse_requirements
+    from validate_tickets import validate_tickets
+
+    run_path = Path(run_dir)
+    manifest = load_json_file(run_path / "tickets.manifest.json")
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("epics"), list):
+        print("Error: tickets.manifest.json not found or not valid JSON", file=sys.stderr)
+        sys.exit(1)
+
+    state = load_json_file(run_path / "state.json") or {}
+    run_id = state.get("run_id", "unknown")
+
+    epics = [e for e in manifest["epics"] if isinstance(e, dict)]
+    children = [c for e in epics for c in e.get("children", []) if isinstance(c, dict)]
+    counts = {}
+    for child in children:
+        counts[child.get("type", "?")] = counts.get(child.get("type", "?"), 0) + 1
+
+    prd_content = load_markdown_file(run_path / "prd.md") or ""
+    must = [r for r, priority in parse_requirements(prd_content) if priority == "Must"]
+    cited = set()
+    for child in children:
+        if child.get("type") == "Story":
+            cited.update(child.get("req_ids") or [])
+    must_covered = [r for r in must if r in cited]
+
+    errors = validate_tickets(run_dir, REPO_ROOT)
+
+    lines = ["=" * 60, "Tickets Gate Summary", "=" * 60, f"Run ID: {run_id}"]
+    lines.append(f"Tickets: {len(epics) + len(children)}")
+    lines.append(f"Epics: {len(epics)}")
+    for epic in epics:
+        lines.append(f"  - {epic.get('id')}: {epic.get('summary')}")
+    for kind, label in (("Story", "Stories"), ("Task", "Tasks"), ("Spike", "Spikes")):
+        lines.append(f"{label}: {counts.get(kind, 0)}")
+    lines.append(f"Must requirements covered: {len(must_covered)} of {len(must)}")
+    if errors:
+        lines.append(f"Definition of Ready errors ({len(errors)}):")
+        lines.extend(f"  - {e}" for e in errors)
+    else:
+        lines.append("Definition of Ready errors: none")
+    lines.append("Preview: tickets.preview.md (run python scripts/preview_tickets.py to refresh it)")
+    if errors:
+        lines.append("Next step: fix the errors above; tickets cannot be approved until they pass")
+    else:
+        lines.append(f"Next step: Approve with /pm-approve tickets {run_id} or send change requests")
+    lines.append("=" * 60)
+    for line in lines:
+        print(line)
+
+
 def gate_summary(run_dir: str, artifact: str) -> None:
     """Print a one-screen summary."""
+
+    if artifact == "tickets":
+        tickets_gate_summary(run_dir)
+        return
 
     if artifact == "ux":
         ux_gate_summary(run_dir)
@@ -370,7 +427,7 @@ def gate_summary(run_dir: str, artifact: str) -> None:
 def main():
     """Main entry point."""
     if len(sys.argv) != 3:
-        print("Usage: python scripts/gate_summary.py <run_dir> prd|ux", file=sys.stderr)
+        print("Usage: python scripts/gate_summary.py <run_dir> prd|ux|tickets", file=sys.stderr)
         sys.exit(1)
 
     run_dir = sys.argv[1]

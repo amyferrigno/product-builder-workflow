@@ -327,11 +327,11 @@ def test_approve_missing_prd():
 
 
 def test_approve_unsupported_artifact():
-    """Test that an unsupported artifact (tickets) is rejected."""
+    """Test that an unsupported artifact is rejected."""
     with tempfile.TemporaryDirectory() as tmpdir:
         run_dir = create_test_run(tmpdir, verdict="PASS")
 
-        code, stdout, stderr = run_approve(run_dir, artifact="tickets")
+        code, stdout, stderr = run_approve(run_dir, artifact="bogus")
 
         assert code == 1, "Should have failed"
         assert "milestone" in stderr or "not available" in stderr
@@ -579,9 +579,9 @@ def test_approve_ux_does_not_touch_real_decisions_file(tmp_path):
     assert before == after
 
 
-def test_approve_tickets_still_unavailable(tmp_path):
+def test_approve_unknown_artifact_unavailable(tmp_path):
     run = audited_run(tmp_path)
-    code, _, stderr = run_approve(str(run), "tickets")
+    code, _, stderr = run_approve(str(run), "bogus")
     assert code == 1
     assert "not available until a later milestone" in stderr
 
@@ -642,7 +642,7 @@ def test_check_approval_ux_invalid_without_prd_sha256(tmp_path):
 
 def test_check_approval_unknown_artifact_is_invalid(tmp_path):
     run = audited_run(tmp_path)
-    code, stdout, _ = run_check_approval(str(run), "tickets")
+    code, stdout, _ = run_check_approval(str(run), "bogus")
     assert code == 1
     assert stdout.startswith("invalid")
 
@@ -656,3 +656,156 @@ def test_approval_status_function_matches_cli(tmp_path):
     run_approve(str(run), "ux")
     assert approval_status(str(run), "ux") == (True, "approved")
     assert approval_status(str(run), "prd") == (True, "approved")
+
+
+# --- Gate C: approve tickets -------------------------------------------------
+
+sys.path.insert(0, str(Path(__file__).parent))
+from tickets_helpers import approve_ux_file, make_tickets_run, valid_manifest, write_manifest  # noqa: E402
+from ux_gate_helpers import write_state  # noqa: E402
+
+
+def tickets_run(tmp_path, ai=False):
+    run = make_tickets_run(tmp_path, ai=ai)
+    write_state(run)
+    return run
+
+
+def test_approve_tickets_refuses_without_ux_approval(tmp_path):
+    run = tickets_run(tmp_path)
+    (run / "approvals" / "ux.approved").unlink()
+    code, _, stderr = run_approve(str(run), "tickets")
+    assert code == 1
+    assert "UX approval is not valid" in stderr
+    assert not (run / "approvals" / "tickets.approved").exists()
+
+
+def test_approve_tickets_refuses_with_stale_ux(tmp_path):
+    run = tickets_run(tmp_path)
+    screen = run / "ux" / "screens" / "SCR-002-details.html"
+    screen.write_text(screen.read_text() + "\n<!-- edit -->\n")
+    code, _, stderr = run_approve(str(run), "tickets")
+    assert code == 1
+    assert "UX approval is not valid" in stderr
+    assert "stale" in stderr
+    assert not (run / "approvals" / "tickets.approved").exists()
+
+
+def test_approve_tickets_refuses_with_validator_errors(tmp_path):
+    run = tickets_run(tmp_path)
+    m = valid_manifest(run, False)
+    m["epics"][0]["children"][0]["acceptance_criteria"].pop()
+    write_manifest(run, m)
+    code, _, stderr = run_approve(str(run), "tickets")
+    assert code == 1
+    assert "Definition of Ready" in stderr
+    assert "T-001" in stderr
+    assert not (run / "approvals" / "tickets.approved").exists()
+
+
+def test_approve_tickets_refuses_override(tmp_path):
+    run = tickets_run(tmp_path)
+    code, _, stderr = run_approve(str(run), "tickets", override_reason="ship it")
+    assert code == 1
+    assert "--override is not allowed for tickets" in stderr
+    assert not (run / "approvals" / "tickets.approved").exists()
+
+
+def test_approve_tickets_success_writes_everything(tmp_path):
+    from tickets_hash import tickets_hash
+    run = tickets_run(tmp_path)
+    prd_before = (run / "prd.md").read_bytes()
+    ux_before = {p: p.read_bytes() for p in sorted((run / "ux").rglob("*")) if p.is_file()}
+    code, _, stderr = run_approve(str(run), "tickets")
+    assert code == 0, stderr
+    approval = json.loads((run / "approvals" / "tickets.approved").read_text())
+    manifest = json.loads((run / "tickets.manifest.json").read_text())
+    count = sum(1 + len(e["children"]) for e in manifest["epics"])
+    assert approval["artifact"] == "tickets"
+    assert approval["sha256"] == tickets_hash(run)
+    assert approval["prd_sha256"] == sha(run / "prd.md")
+    assert approval["ux_sha256"] == ux_hash(run)
+    assert approval["ticket_count"] == count
+    assert "approved_at" in approval
+    state = ux_state(run)
+    assert state["approval_hashes"]["tickets"] == tickets_hash(run)
+    assert state["stage"] == "stage3"
+    assert state["status"] == "approved"
+    assert "(not yet published)" in (run / "traceability.md").read_text()
+    assert "Tickets Approval" in decisions_of(run)
+    assert (run / "prd.md").read_bytes() == prd_before
+    assert {p: p.read_bytes() for p in sorted((run / "ux").rglob("*")) if p.is_file()} == ux_before
+
+
+def test_approve_tickets_does_not_touch_real_decisions_file(tmp_path):
+    run = tickets_run(tmp_path)
+    repo_decisions = Path(__file__).parent.parent / "decisions.md"
+    before = repo_decisions.read_bytes() if repo_decisions.exists() else None
+    run_approve(str(run), "tickets")
+    after = repo_decisions.read_bytes() if repo_decisions.exists() else None
+    assert before == after
+
+
+def _approved_tickets(tmp_path):
+    run = tickets_run(tmp_path)
+    code, _, stderr = run_approve(str(run), "tickets")
+    assert code == 0, stderr
+    return run
+
+
+def test_check_approval_tickets_approved(tmp_path):
+    run = _approved_tickets(tmp_path)
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert (code, stdout.strip()) == (0, "approved")
+
+
+def test_check_approval_tickets_missing(tmp_path):
+    run = tickets_run(tmp_path)
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert code == 1
+    assert stdout.startswith("missing")
+
+
+def test_check_approval_tickets_stale_after_manifest_edit(tmp_path):
+    run = _approved_tickets(tmp_path)
+    m = json.loads((run / "tickets.manifest.json").read_text())
+    m["epics"][0]["children"][0]["priority"] = "Low"
+    write_manifest(run, m)
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert code == 1
+    assert stdout.startswith("stale")
+
+
+def test_check_approval_tickets_stale_after_screen_edit(tmp_path):
+    run = _approved_tickets(tmp_path)
+    screen = run / "ux" / "screens" / "SCR-002-details.html"
+    screen.write_text(screen.read_text() + "\n<!-- edit -->\n")
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert code == 1
+    assert stdout.startswith("stale")
+
+
+def test_check_approval_tickets_stale_after_prd_edit(tmp_path):
+    run = _approved_tickets(tmp_path)
+    (run / "prd.md").write_text((run / "prd.md").read_text() + "\nedit\n")
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert code == 1
+    assert stdout.startswith("stale")
+
+
+def test_check_approval_tickets_not_stale_after_jira_key_change(tmp_path):
+    run = _approved_tickets(tmp_path)
+    m = json.loads((run / "tickets.manifest.json").read_text())
+    m["epics"][0]["jira_key"] = "PROJ-1"
+    m["epics"][0]["children"][0]["jira_key"] = "PROJ-2"
+    write_manifest(run, m)
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert (code, stdout.strip()) == (0, "approved")
+
+
+def test_check_approval_tickets_invalid_on_corrupt_file(tmp_path):
+    run = _approved_tickets(tmp_path)
+    (run / "approvals" / "tickets.approved").write_text("{not json")
+    code, stdout, _ = run_check_approval(str(run), "tickets")
+    assert code == 1
+    assert stdout.startswith("invalid")

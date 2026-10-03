@@ -51,6 +51,22 @@ def matches_prd_pattern(file_path: str) -> tuple:
         return False, None
 
 
+def matches_spec_pattern(file_path: str) -> tuple:
+    """
+    Check if file_path matches runs/<run_id>/ux/spec.md.
+    Returns (True, run_dir) if it matches, (False, None) otherwise.
+    """
+    try:
+        parts = Path(os.path.normpath(file_path)).parts
+        for i, part in enumerate(parts):
+            if part == "runs" and i + 3 < len(parts):
+                if parts[i + 2] == "ux" and parts[i + 3] == "spec.md" and i + 4 == len(parts):
+                    return True, str(Path(*parts[:i + 2]))
+        return False, None
+    except Exception:
+        return False, None
+
+
 def find_validate_script(repo_root: str) -> str:
     """Find the validate_prd.py script."""
     validate_path = Path(repo_root) / "scripts" / "validate_prd.py"
@@ -100,6 +116,28 @@ def main():
 
         # Check if this is a prd.md file
         is_prd, run_dir = matches_prd_pattern(str(resolved_path))
+
+        is_spec, spec_run_dir = matches_spec_pattern(str(resolved_path))
+
+        if is_spec:
+            spec_script = Path(project_dir) / "scripts" / "validate_ux.py"
+            if not spec_script.exists():
+                sys.exit(0)
+            try:
+                result = subprocess.run(
+                    [get_python_executable(project_dir), str(spec_script), spec_run_dir, "--spec-only"],
+                    capture_output=True, text=True, cwd=project_dir, timeout=30
+                )
+                if result.returncode != 0:
+                    print(f"UX spec validation errors:\n{result.stdout + result.stderr}", file=sys.stderr)
+                    sys.exit(2)
+                sys.exit(0)
+            except subprocess.TimeoutExpired:
+                sys.exit(0)
+            except SystemExit:
+                raise
+            except Exception:
+                sys.exit(0)
 
         if not is_prd:
             # Not a PRD file: allow

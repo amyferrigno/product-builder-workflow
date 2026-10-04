@@ -12,10 +12,12 @@ from pathlib import Path
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from audit_verdict import verdict_for_run  # noqa: E402
 from check_approval import approval_status  # noqa: E402
 from traceability import write_traceability  # noqa: E402
 from tickets_hash import tickets_hash  # noqa: E402
 from ux_hash import ux_hash  # noqa: E402
+from ux_verdict import ux_verdict_for_run  # noqa: E402
 from validate_tickets import validate_tickets  # noqa: E402
 
 try:
@@ -103,16 +105,6 @@ def approve_prd(
     # Load state
     state = load_state(run_dir)
 
-    # Check verdict
-    verdict = state.get("verdicts", {}).get("prd")
-
-    if verdict not in ("PASS", "PASS_WITH_RISK"):
-        if override_reason is None or override_reason == "":
-            raise ValueError(f"PRD verdict is {verdict}; use --override with a reason to approve")
-        # Empty override reason is not allowed
-        if not override_reason or not override_reason.strip():
-            raise ValueError("--override reason cannot be empty")
-
     # An approval always needs an audit, even with --override
     if not (state.get("artifact_hashes") or {}).get("prd"):
         raise ValueError("PRD has not been audited; run the audit first")
@@ -120,13 +112,17 @@ def approve_prd(
     # Compute current hash of prd.md
     current_hash = hash_file(str(prd_path))
 
-    # Check if artifact hash exists and differs (means PRD changed since audit)
-    artifact_hash = state.get("artifact_hashes", {}).get("prd")
-    if artifact_hash is not None and artifact_hash != current_hash:
+    # PRD changed since it was audited: refused even with an override
+    if state["artifact_hashes"]["prd"] != current_hash:
         raise ValueError("PRD changed since it was audited; run the audit again")
 
-    # Find repo root for schema validation
+    # Recompute the verdict from the audit file; state.json verdicts are not trusted
     repo_root = find_repo_root(run_dir)
+    verdict, _reasons = verdict_for_run(run_path, repo_root)
+
+    if verdict not in ("PASS", "PASS_WITH_RISK"):
+        if override_reason is None or not override_reason.strip():
+            raise ValueError(f"PRD verdict is {verdict}; use --override with a reason to approve")
 
     # Create approval object
     approval = {
@@ -234,13 +230,14 @@ def approve_ux(
     if not audited_hash:
         raise ValueError("UX has not been audited; run the audit first")
 
-    verdict = (state.get("verdicts") or {}).get("ux")
+    if audited_hash != current_hash:
+        raise ValueError("UX changed since it was audited; run the audit again")
+
+    # Recompute the verdict from the audit file; state.json verdicts are not trusted
+    verdict, _reasons = ux_verdict_for_run(run_path)
     if verdict not in ("PASS", "PASS_WITH_RISK"):
         if override_reason is None or not override_reason.strip():
             raise ValueError(f"UX verdict is {verdict}; use --override with a reason to approve")
-
-    if audited_hash != current_hash:
-        raise ValueError("UX changed since it was audited; run the audit again")
 
     repo_root = find_repo_root(run_dir)
     prd_hash = hash_file(str(run_path / "prd.md"))

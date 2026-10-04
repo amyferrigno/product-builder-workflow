@@ -52,6 +52,35 @@ def run_check_approval(run_dir: str, artifact: str = "prd") -> tuple:
     return result.returncode, result.stdout, result.stderr
 
 
+PRD_DIMS = ["problem_clarity", "evidence_strength", "strategic_fit", "success_metrics", "scope_discipline",
+            "feasibility", "testability", "risk_coverage", "traceability"]
+
+
+def write_prd_audit(run_dir, verdict: str) -> None:
+    """Write a real prd.audit.json that computes to the given verdict (None counts as FAIL)."""
+    run_dir = Path(run_dir)
+    scores = {d: 4 for d in PRD_DIMS}
+    if verdict == "PASS_WITH_RISK":
+        scores["evidence_strength"] = 2
+    elif verdict != "PASS":
+        scores["problem_clarity"] = 1
+    dims = []
+    for dim_id, score in scores.items():
+        dim = {"id": dim_id, "score": score, "justification": f"{dim_id} note."}
+        if score < 3:
+            dim["fix"] = f"Improve {dim_id}."
+            dim["sections"] = ["1"]
+        dims.append(dim)
+    audit = {
+        "run_id": "2026-10-03-test",
+        "prd_hash": hashlib.sha256((run_dir / "prd.md").read_bytes()).hexdigest(),
+        "ai_feature": False,
+        "dimensions": dims,
+        "hallucination_check": {"unsupported_numbers": [], "unsupported_quotes": [], "unsupported_decisions": []},
+    }
+    (run_dir / "prd.audit.json").write_text(json.dumps(audit), encoding="utf-8")
+
+
 def create_test_run(tmpdir: str, verdict: str = "PASS", audited: bool = True) -> str:
     """Create a test run directory with state.json and prd.md."""
     run_dir = Path(tmpdir) / "2026-10-03-test"
@@ -93,6 +122,7 @@ def create_test_run(tmpdir: str, verdict: str = "PASS", audited: bool = True) ->
         state["artifact_hashes"]["prd"] = hashlib.sha256(prd_content.encode()).hexdigest()
         with open(state_path, 'w') as f:
             json.dump(state, f)
+        write_prd_audit(run_dir, verdict)
 
     return str(run_dir)
 
@@ -455,6 +485,106 @@ def test_approve_audited_fail_can_still_be_overridden():
         assert (Path(run_dir) / "approvals" / "prd.approved").exists()
 
 
+def _set_state_verdict(run_dir, key: str, value: str) -> None:
+    path = Path(run_dir) / "state.json"
+    state = json.loads(path.read_text())
+    state["verdicts"][key] = value
+    path.write_text(json.dumps(state))
+
+
+def test_approve_prd_ignores_hand_edited_state_verdict():
+    """Audit says FAIL, state.json edited to PASS: still refused without override."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        _set_state_verdict(run_dir, "prd", "PASS")
+
+        code, stdout, stderr = run_approve(run_dir)
+
+        assert code == 1
+        assert "PRD verdict is FAIL" in stderr
+        assert not (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_prd_fail_override_records_recomputed_verdict():
+    """The approval file and decisions entry carry the recomputed verdict, not the state value."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        _set_state_verdict(run_dir, "prd", "PASS")
+        decisions_file = Path(tmpdir) / "decisions.md"
+        decisions_file.write_text("# Decisions\n\n")
+
+        code, stdout, stderr = run_approve(run_dir, override_reason="Owner accepts", decisions_file=str(decisions_file))
+
+        assert code == 0, stderr
+        approval = json.loads((Path(run_dir) / "approvals" / "prd.approved").read_text())
+        assert approval["verdict"] == "FAIL"
+        assert approval["override_reason"] == "Owner accepts"
+        assert "**Verdict**: FAIL" in decisions_file.read_text()
+
+
+def test_approve_prd_missing_audit_file_refuses_even_with_override():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="PASS")
+        (Path(run_dir) / "prd.audit.json").unlink()
+
+        code, stdout, stderr = run_approve(run_dir, override_reason="ship it")
+
+        assert code == 1
+        assert "run the audit first" in stderr
+        assert not (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_prd_stale_audit_refused_even_with_override():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        (Path(run_dir) / "prd.md").write_text("# PRD\n\nChanged.\n")
+
+        code, stdout, stderr = run_approve(run_dir, override_reason="ship it")
+
+        assert code == 1
+        assert "PRD changed since it was audited" in stderr
+
+
+def test_approve_ux_ignores_hand_edited_state_verdict(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    _set_state_verdict(run, "ux", "PASS")
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "UX verdict is FAIL" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_validator_errors_refuse_despite_perfect_scores(tmp_path):
+    run = make_gate_run(tmp_path)
+    (run / "ux" / "screens" / "SCR-002-details.html").unlink()  # invalid before the audit, so hashes match
+    write_audit(run, build_audit(run, False))
+    render(run)
+    _set_state_verdict(run, "ux", "PASS")
+    code, _, stderr = run_approve(str(run), "ux")
+    assert code == 1
+    assert "UX verdict is FAIL" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_fail_override_records_recomputed_verdict(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    _set_state_verdict(run, "ux", "PASS")
+    code, _, stderr = run_approve(str(run), "ux", override_reason="Demo only")
+    assert code == 0, stderr
+    approval = json.loads((run / "approvals" / "ux.approved").read_text())
+    assert approval["verdict"] == "FAIL"
+    assert "**Verdict**: FAIL" in decisions_of(run)
+
+
+def test_approve_ux_missing_audit_file_refuses_even_with_override(tmp_path):
+    run = audited_run(tmp_path)
+    (run / "ux.audit.json").unlink()
+    code, _, stderr = run_approve(str(run), "ux", override_reason="ship it")
+    assert code == 1
+    assert "run the audit first" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
 # --- Gate B: approve ux ------------------------------------------------------
 
 def ux_state(run):
@@ -809,3 +939,80 @@ def test_check_approval_tickets_invalid_on_corrupt_file(tmp_path):
     code, stdout, _ = run_check_approval(str(run), "tickets")
     assert code == 1
     assert stdout.startswith("invalid")
+
+
+# --- The audit file's own hash decides staleness ------------------------------
+
+def _set_state_artifact_hash(run_dir, key: str, value: str) -> None:
+    path = Path(run_dir) / "state.json"
+    state = json.loads(path.read_text())
+    state["artifact_hashes"][key] = value
+    path.write_text(json.dumps(state))
+
+
+def test_approve_prd_stale_audit_refused_when_state_hash_hand_set():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        prd = Path(run_dir) / "prd.md"
+        prd.write_text("# PRD\n\nChanged after audit.\n")
+        _set_state_artifact_hash(run_dir, "prd", hashlib.sha256(prd.read_bytes()).hexdigest())
+
+        code, _, stderr = run_approve(run_dir, override_reason="ship it")
+
+        assert code == 1
+        assert "PRD changed since it was audited; run the audit again" in stderr
+        assert not (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_prd_audit_file_hash_altered_refused_with_override():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        audit_path = Path(run_dir) / "prd.audit.json"
+        audit = json.loads(audit_path.read_text())
+        audit["prd_hash"] = "0" * 64
+        audit_path.write_text(json.dumps(audit))
+
+        code, _, stderr = run_approve(run_dir, override_reason="ship it")
+
+        assert code == 1
+        assert "PRD changed since it was audited; run the audit again" in stderr
+        assert not (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_prd_legit_fail_with_override_still_approves():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+
+        code, _, stderr = run_approve(run_dir, override_reason="Owner accepts")
+
+        assert code == 0, stderr
+        assert (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_ux_stale_audit_refused_when_state_hash_hand_set(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    flows = run / "ux" / "flows.md"
+    flows.write_text(flows.read_text() + "\nedited after audit\n")
+    _set_state_artifact_hash(run, "ux", ux_hash(run))
+    code, _, stderr = run_approve(str(run), "ux", override_reason="ship it")
+    assert code == 1
+    assert "UX changed since it was audited; run the audit again" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_audit_file_hash_altered_refused_with_override(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    audit = json.loads((run / "ux.audit.json").read_text())
+    audit["ux_hash"] = "0" * 64
+    (run / "ux.audit.json").write_text(json.dumps(audit))
+    code, _, stderr = run_approve(str(run), "ux", override_reason="ship it")
+    assert code == 1
+    assert "UX changed since it was audited; run the audit again" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_legit_fail_with_override_still_approves(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    code, _, stderr = run_approve(str(run), "ux", override_reason="Demo only")
+    assert code == 0, stderr
+    assert (run / "approvals" / "ux.approved").exists()

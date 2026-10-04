@@ -18,6 +18,10 @@ except ImportError as e:
     sys.exit(2)
 
 
+class StaleAuditError(ValueError):
+    """The audit file was made for a different version of the artifact."""
+
+
 def load_rubric(repo_root: Path) -> dict:
     """Load the audit rubric from templates/audit-prd.rubric.yaml."""
     rubric_path = repo_root / "templates" / "audit-prd.rubric.yaml"
@@ -181,6 +185,35 @@ def find_repo_root(start_path: Path) -> Path:
         current = current.parent
     # Fallback to current working directory
     return Path.cwd()
+
+
+def verdict_for_run(run_dir: Path, repo_root: Path):
+    """Recompute the PRD verdict from prd.audit.json and the current prd.md.
+
+    Returns (verdict, reasons). Raises ValueError if the audit is missing,
+    unreadable or fails its schema.
+    """
+    run_dir = Path(run_dir)
+    audit_path = run_dir / "prd.audit.json"
+    prd_path = run_dir / "prd.md"
+    if not audit_path.exists():
+        raise ValueError("PRD audit file (prd.audit.json) not found; run the audit first")
+    try:
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        prd_text = prd_path.read_text(encoding="utf-8")
+        current_hash = hash_file(prd_path)
+        errors = list(Draft202012Validator(load_schema("prd-audit", repo_root)).iter_errors(audit))
+        rubric = load_rubric(repo_root)
+    except (OSError, ValueError, FileNotFoundError) as e:
+        raise ValueError(f"Cannot read PRD audit ({e}); run the audit first")
+    if errors:
+        raise ValueError(
+            f"PRD audit is invalid ({'; '.join(e.message for e in errors)}); run the audit first"
+        )
+    # The audit file's own hash decides; state.json is not trusted
+    if audit.get("prd_hash") != current_hash:
+        raise StaleAuditError("PRD changed since it was audited; run the audit again")
+    return compute_verdict(audit, rubric, current_hash, prd_has_ai_addendum(prd_text))
 
 
 def main():

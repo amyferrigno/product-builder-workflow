@@ -12,6 +12,8 @@ disable-model-invocation: true
 
 Only a human may trigger this skill. The model must never invoke it on its own, and must never run `scripts/approve.py` outside it.
 
+Claude Code will show a confirmation prompt for the approval command. The human must accept it for the approval to run.
+
 ## Execution
 
 1. Approve (from the repo root), with the artifact the human named (`prd`, `ux` or `tickets`):

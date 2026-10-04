@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import prd_has_ai_addendum  # noqa: E402
+from audit_verdict import StaleAuditError, prd_has_ai_addendum  # noqa: E402
 from ux_hash import ux_hash  # noqa: E402
 from validate_ux import validate_ux  # noqa: E402
 
@@ -111,6 +111,34 @@ def compute_ux_verdict(
     if reasons:
         return "FAIL", reasons
     return ("PASS_WITH_RISK" if has_risk else "PASS"), reasons
+
+
+def ux_verdict_for_run(run_dir: Path, repo_root: Path = REPO_ROOT) -> Tuple[str, List[str]]:
+    """Recompute the UX verdict from ux.audit.json, the current UX files and the script checks.
+
+    Raises ValueError if the audit is missing, unreadable or fails its schema.
+    """
+    run_dir = Path(run_dir)
+    audit_path = run_dir / "ux.audit.json"
+    if not audit_path.exists():
+        raise ValueError("UX audit file (ux.audit.json) not found; run the audit first")
+    try:
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        errors = list(Draft202012Validator(load_ux_audit_schema(repo_root)).iter_errors(audit))
+        rubric = load_ux_rubric(repo_root)
+        has_ai = prd_has_ai_addendum((run_dir / "prd.md").read_text(encoding="utf-8"))
+        current_hash = ux_hash(run_dir)
+        validator_errors = validate_ux(run_dir, repo_root)
+    except (OSError, ValueError) as e:
+        raise ValueError(f"Cannot read UX audit ({e}); run the audit first")
+    if errors:
+        raise ValueError(
+            f"UX audit is invalid ({'; '.join(e.message for e in errors)}); run the audit first"
+        )
+    # The audit file's own hash decides; state.json is not trusted
+    if audit.get("ux_hash") != current_hash:
+        raise StaleAuditError("UX changed since it was audited; run the audit again")
+    return compute_ux_verdict(audit, rubric, current_hash, has_ai, validator_errors)
 
 
 def main() -> None:

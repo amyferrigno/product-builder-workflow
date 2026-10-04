@@ -17,9 +17,10 @@ from pathlib import Path
 
 WRITE_VERBS = (
     "create", "update", "edit", "delete", "transition", "add", "assign", "move", "link", "comment",
-    "set", "post", "put", "patch", "upload", "archive", "clone",
+    "set", "post", "put", "patch", "upload", "archive", "clone", "upsert", "remove",
 )
 READ_PREFIXES = ("get", "search", "list", "read", "fetch", "lookup")
+READ_ALLOWLIST = ("gettransitionsforjiraissue", "getjiraissueremoteissuelinks", "atlassianuserinfo")
 SEPARATORS = {";", "&&", "||", "|", "&", "\n"}
 
 
@@ -93,9 +94,11 @@ def check_mcp(tool_name: str, project_dir: str):
     if "jira" not in name and "atlassian" not in name:
         return
     action = name.rsplit("__", 1)[-1]
-    if action.startswith(READ_PREFIXES):
+    if action in READ_ALLOWLIST:
         return
-    if not any(verb in name for verb in WRITE_VERBS):
+    # A read prefix is not enough: "getOrCreate..." or "list_and_delete" still contain a write verb.
+    # Anything that is neither allowlisted nor read-prefixed is treated as a write.
+    if action.startswith(READ_PREFIXES) and not any(verb in action for verb in WRITE_VERBS):
         return
     if read_jira_mode(project_dir) == "dry_run":
         print(

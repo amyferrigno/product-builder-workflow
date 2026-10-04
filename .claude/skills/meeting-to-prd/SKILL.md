@@ -25,7 +25,7 @@ Output: `runs/<date>-<slug>/` with:
 - `00-notes/<original-filename>` (raw input as-is, bytes unchanged)
 - `00-notes/notes.numbered.md` (every line prefixed with number)
 - `state.json` (validates against `schemas/state.schema.json`)
-- `approvals/` folder (empty, for M2)
+- `approvals/` folder (empty until a human approves)
 
 Exit 1 with error message if:
 - Content is empty or whitespace-only

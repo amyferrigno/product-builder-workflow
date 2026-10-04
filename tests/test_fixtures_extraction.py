@@ -1,4 +1,4 @@
-"""Test M1 fixtures: all golden outputs pass validators and match expectations."""
+"""Extraction and problem framing fixtures: all golden outputs pass validators and match expectations."""
 
 import json
 import re
@@ -301,7 +301,7 @@ def test_fixture_golden_outputs(fixture_name: str):
             "parked_problem_count", "ai_proposed", "ai_verdict", "ai_verdict_allowed",
             "must_have_open_questions", "must_have_disagreements", "must_have_reframed_from_solution",
             "prd",  # PRD expectations, checked in test_fixtures_prd.py
-            "decision", "ux"  # M8 expectations, checked by scripts/eval_fixtures.py
+            "decision", "ux"  # decision and ux expectations, checked by scripts/eval_fixtures.py
         }
 
         # Assert each key in expected.yaml

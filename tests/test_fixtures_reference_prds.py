@@ -1,4 +1,4 @@
-"""Test M8 fixtures: reference PRDs for messy-transcript and contradictory-decisions."""
+"""Reference PRD fixtures: reference PRDs for messy-transcript and contradictory-decisions."""
 
 import hashlib
 import json

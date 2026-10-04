@@ -397,7 +397,7 @@ def parse_requirements(prd_text: str) -> List[Tuple[str, str]]:
 ID_TOKEN_RE = re.compile(r'\b[A-Z]+-\d+\b')
 ISO_DATE_RE = re.compile(r'\b\d{4}-\d{2}-\d{2}\b')
 THOUSANDS_RE = re.compile(r'\d{1,3}(?:,\d{3})+')
-# Digits glued to a letter (M3, Q4, v2) are labels, not quantities.
+# Digits glued to a letter (P1, Q4, v2) are labels, not quantities.
 NUMBER_RE = re.compile(r'(?<![A-Za-z\d.])(\d+(?:\.\d+)?)([%+]?)')
 
 

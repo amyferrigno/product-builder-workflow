@@ -361,6 +361,7 @@ def test_cli_log_with_symlinked_log_exits_0_and_leaves_target_alone(tmp_path):
                        "--agent-type", "x")
     assert result.returncode == 0
     assert outside.read_bytes() == b"keep me\n"
+    assert result.stdout.strip() == "Skipped: cost log is a symlink"
 
 
 def test_warn_and_stop_mention_unparsed_entries_not_counted(tmp_path):

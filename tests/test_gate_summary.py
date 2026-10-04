@@ -259,7 +259,7 @@ def test_gate_summary_full_output():
         assert "MVP Scope" in stdout
         assert "Verdict:" in stdout
         assert "Open Questions" in stdout
-        assert "Cost: not metered until M8" in stdout
+        assert "Cost: no cost data" in stdout
         assert "Next step:" in stdout
 
 
@@ -434,6 +434,26 @@ def test_gate_summary_missing_prd():
         assert "Traceback" not in stderr
 
 
+def test_cost_line_known_figure(tmp_path):
+    """A small cost log gives a known figure."""
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import gate_summary
+    (tmp_path / "state.json").write_text(json.dumps({"stage": "stage1"}))
+    (tmp_path / "cost.log.jsonl").write_text(json.dumps({"stage": "stage1", "estimated_usd": 1.5}) + "\n")
+    config = {"budgets": {"stage1": 3.0}, "pricing": {"medium": {}}}
+    assert gate_summary.cost_line(tmp_path, config) == "Cost: 1.50 of 3.00 USD estimated for stage 1 (50.0%)"
+
+
+def test_cost_line_no_cost_data(tmp_path):
+    """No log, or no price table, gives 'no cost data' and never raises."""
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import gate_summary
+    config = {"budgets": {"stage1": 3.0}, "pricing": {"medium": {}}}
+    assert gate_summary.cost_line(tmp_path, config) == "Cost: no cost data"
+    (tmp_path / "cost.log.jsonl").write_text(json.dumps({"stage": "stage1", "estimated_usd": 1.5}) + "\n")
+    assert gate_summary.cost_line(tmp_path, {"budgets": {"stage1": 3.0}}) == "Cost: no cost data"
+
+
 def test_gate_summary_cost_line():
     """Test that cost line is present."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -442,7 +462,7 @@ def test_gate_summary_cost_line():
         code, stdout, stderr = run_gate_summary(run_dir)
 
         assert code == 0
-        assert "Cost: not metered until M8" in stdout
+        assert "Cost: no cost data" in stdout
 
 
 def test_gate_summary_next_step_line():
@@ -525,7 +545,7 @@ def test_gate_summary_on_golden_fixture(name: str, tmp_path: Path):
     assert "not available" not in metric_line
 
     # Fixed lines and size
-    assert "Cost: not metered until M8" in lines
+    assert "Cost: no cost data" in lines
     next_line = next(l for l in lines if l.startswith("Next step:"))
     if expected["prd"]["verdict"] in ("PASS", "PASS_WITH_RISK"):
         assert "/pm-approve prd " in next_line

@@ -1,4 +1,4 @@
-"""End-to-end M7 on the ai-clear-fit fixture: Gate C approval, then a live publish against the fake Jira."""
+"""End-to-end publish on the ai-clear-fit fixture: Gate C approval, then a live publish against the fake Jira."""
 import json
 import shutil
 import subprocess

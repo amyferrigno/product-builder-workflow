@@ -1,4 +1,4 @@
-"""Test M2 fixtures: golden PRDs validate, audit to the expected verdict, and bad-prd is rejected."""
+"""PRD fixtures: golden PRDs validate, audit to the expected verdict, and bad-prd is rejected."""
 
 import hashlib
 import json

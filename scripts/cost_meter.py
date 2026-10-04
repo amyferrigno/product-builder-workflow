@@ -276,7 +276,10 @@ def main(argv=None) -> int:
         if args.command == "log":
             entry = log_entry(run_dir, args.transcript, args.agent_type, args.agent_id, config)
             if entry is None:
-                print(f"Already logged: {args.agent_id}")
+                if os.path.islink(run_dir / COST_LOG):
+                    print("Skipped: cost log is a symlink")
+                else:
+                    print(f"Already logged: {args.agent_id}")
             else:
                 print(json.dumps(entry))
             return 0

@@ -34,6 +34,7 @@ MANIFEST_NAME = "tickets.manifest.json"
 EPIC_ID_RE = re.compile(r'^EPIC-\d{2}$')
 CHILD_ID_RE = re.compile(r'^T-\d{3}$')
 SUMMARY_RE = re.compile(r'^\[[^\]]+\] [A-Z][a-z]+ \S')
+LABEL_RE = re.compile(r'^[a-z0-9][a-z0-9._-]*\Z')
 BANNED_RE = re.compile(r'TODO|TBD|\[\[|lorem', re.IGNORECASE)
 PRIORITIES = ("Highest", "High", "Medium", "Low")
 MAX_SUMMARY = 80
@@ -112,6 +113,11 @@ def _check_common(tid: str, ticket: dict, prd_slug: str, ai: bool) -> List[str]:
     for label in expected_labels(prd_slug, tid, ai)[:3]:
         if label not in labels:
             errors.append(f"{tid}: missing label '{label}'")
+    for label in labels:
+        if not isinstance(label, str) or not LABEL_RE.match(label):
+            errors.append(
+                f"{tid}: label {label!r} is invalid (lower case letters, digits, '.', '_' or '-' only; no spaces)"
+            )
     errors.extend(_blank_errors(tid, ticket))
     own_ext = f"ext-{prd_slug}-{tid.lower()}"
     for label in labels:

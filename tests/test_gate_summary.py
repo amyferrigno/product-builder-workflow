@@ -444,6 +444,19 @@ def test_cost_line_known_figure(tmp_path):
     assert gate_summary.cost_line(tmp_path, config) == "Cost: 1.50 of 3.00 USD estimated for stage 1 (50.0%)"
 
 
+def test_cost_line_mentions_unparsed_entries(tmp_path):
+    """A damaged log line is never shown as a confident figure."""
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import gate_summary
+    (tmp_path / "state.json").write_text(json.dumps({"stage": "stage1"}))
+    good = json.dumps({"stage": "stage1", "estimated_usd": 1.5})
+    (tmp_path / "cost.log.jsonl").write_text(good + "\nnot json\n")
+    config = {"budgets": {"stage1": 3.0}, "pricing": {"medium": {}}}
+    line = gate_summary.cost_line(tmp_path, config)
+    assert line.startswith("Cost: 1.50 of 3.00 USD")
+    assert line.endswith("(1 unparsed entries not counted)")
+
+
 def test_cost_line_no_cost_data(tmp_path):
     """No log, or no price table, gives 'no cost data' and never raises."""
     sys.path.insert(0, str(REPO_ROOT / "scripts"))

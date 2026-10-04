@@ -30,8 +30,11 @@ def cost_line(run_dir, config=None) -> str:
         info = cost_meter.summarise(run_dir, config)["stage1"]
         if info["budget_usd"] is None or info["percent"] is None:
             return no_data
-        return (f"Cost: {info['spent_usd']:.2f} of {info['budget_usd']:.2f} USD "
+        line = (f"Cost: {info['spent_usd']:.2f} of {info['budget_usd']:.2f} USD "
                 f"estimated for stage 1 ({info['percent']:.1f}%)")
+        if info.get("unparsed"):
+            line += f" ({info['unparsed']} unparsed entries not counted)"
+        return line
     except Exception:
         return no_data
 

@@ -7,3 +7,5 @@ ai_proposed: false
 ai_verdict: null
 must_have_open_questions: true
 must_have_disagreements: true
+prd:
+  verdict: "FAIL"

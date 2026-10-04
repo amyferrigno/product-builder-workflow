@@ -1,0 +1,81 @@
+{
+  "run_id": "2026-01-15-contradictory-decisions",
+  "prd_hash": "c109474ad2b3021ef1daa80a1b18d7bb9cbcb1bee510a485ac5534d8359711b3",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 2,
+      "justification": "Solution-agnostic, but validation rests on one statement and one prospect's request (P-1, R-1); there is no scenario, no workaround and no count of affected users.",
+      "fix": "Add evidence that users in general struggle to find past meetings (request counts, interview findings) and describe how they find meetings today.",
+      "sections": [
+        "3",
+        "6c"
+      ]
+    },
+    {
+      "id": "evidence_strength",
+      "score": 2,
+      "justification": "Only a deal value and a deadline (M-1, M-2) were spoken in the meeting: no provider data, no evidence cards, no anecdote records, and no usage data. Gaps are listed in 6c, but spoken evidence is a claim, so this is a 2.",
+      "fix": "Close the gaps in 6c: configure a data provider and an anecdote source, re-run the figures through them, and attach a confidence level to each figure.",
+      "sections": [
+        "6",
+        "6a",
+        "6b"
+      ]
+    },
+    {
+      "id": "strategic_fit",
+      "score": 2,
+      "justification": "The notes state no strategy and the config vision and strategy are placeholders; the two stated views on plan levels conflict (R-2, R-3) and are left open.",
+      "fix": "Fill in the product vision and strategy document and, once leadership decides plan levels (Q-1), state how the decision fits the pricing strategy.",
+      "sections": [
+        "4"
+      ]
+    },
+    {
+      "id": "success_metrics",
+      "score": 2,
+      "justification": "MET-001 has a proposed target and timeframe and instrumentation, but its baseline is unknown, and the notes hold no usage data to set one.",
+      "fix": "Measure the baseline for MET-001 and MET-003 before launch, or choose a primary metric that has a known baseline.",
+      "sections": [
+        "8"
+      ]
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Non-goals and in/out lists are explicit, and the plan-level choice is kept out of scope until leadership decides (Q-1)."
+    },
+    {
+      "id": "feasibility",
+      "score": 2,
+      "justification": "No effort estimate and the plan-level scope that drives the build is undecided; dependencies are listed but the complexity the PM mentioned (S-2) is unsized.",
+      "fix": "Get an effort estimate for both plan-level options once an engineer is assigned.",
+      "sections": [
+        "10",
+        "14"
+      ]
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All five requirements have Given/When/Then criteria, including the no-match and plan-level edge cases (REQ-002, REQ-003)."
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Five risks each carry a mitigation, including the deal-loss and upsell-loss sides of the disagreement (DIS-1), and the leadership decision is listed as a dependency."
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Claims cite extraction IDs, requirements and metrics are numbered, and the numbers in sections 2, 3 and 6 trace to extraction items (M-1, M-2)."
+    }
+  ],
+  "hallucination_check": {
+    "unsupported_numbers": [],
+    "unsupported_quotes": [],
+    "unsupported_decisions": []
+  }
+}

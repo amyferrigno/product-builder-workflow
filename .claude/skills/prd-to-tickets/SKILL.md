@@ -69,6 +69,8 @@ Run this only when `check_approval.py runs/<run-id> tickets` printed "approved":
 
 In this version it is a dry run. It writes `runs/<run-id>/tickets.dryrun.json` (the exact Jira payloads, epics first) and prints one line per ticket. Nothing is sent to Jira. Report the summary lines to the human in plain words. The model never calls a Jira tool.
 
+To publish for real after the dry run, the human runs `/pm-publish <run-id>` (skill `jira-publish`). This skill never publishes.
+
 ## Errors
 
 Return error and stop if:

@@ -60,8 +60,18 @@ def test_blocks_jira_mcp_writes(tmp_path):
                  "mcp__atlassian__addCommentToJiraIssue", "mcp__atlassian__transitionJiraIssue"):
         result = run_mcp(project, tool)
         assert result.returncode == 2, tool
-        assert "dry-run" in result.stderr
-        assert "M7" in result.stderr
+        assert "only scripts/jira_publish.py may write to Jira" in result.stderr
+
+
+def test_blocks_mcp_writes_when_mode_is_publish(tmp_path):
+    project = make_project(tmp_path)
+    (project / "pm.config.yaml").write_text(CONFIG.replace("dry_run", "publish"), encoding="utf-8")
+    for tool in ("mcp__atlassian__createJiraIssue", "mcp__jira__update_issue"):
+        result = run_mcp(project, tool)
+        assert result.returncode == 2, tool
+        assert "only scripts/jira_publish.py may write to Jira" in result.stderr
+    for tool in ("mcp__atlassian__getJiraIssue", "mcp__atlassian__searchJiraIssuesUsingJql"):
+        assert run_mcp(project, tool).returncode == 0, tool
 
 
 def test_allows_read_only_and_non_jira_mcp(tmp_path):
@@ -159,6 +169,36 @@ def test_allows_publish_with_valid_approval(tmp_path):
     assert run_bash(project, f"python3 scripts/jira_publish.py {run}").returncode == 0
     relative = run.relative_to(project)
     assert run_bash(project, f"python3 scripts/jira_publish.py {relative} --config pm.config.yaml").returncode == 0
+
+
+def test_live_publish_with_valid_approval_asks_a_human(tmp_path):
+    project = make_project(tmp_path)
+    run = approved_run(project)
+    for command in (f"python3 scripts/jira_publish.py {run} --publish",
+                    f"python3 scripts/jira_publish.py --publish {run.relative_to(project)}"):
+        result = run_bash(project, command)
+        assert result.returncode == 0, command
+        decision = json.loads(result.stdout)["hookSpecificOutput"]
+        assert decision["hookEventName"] == "PreToolUse"
+        assert decision["permissionDecision"] == "ask"
+        assert decision["permissionDecisionReason"] == "Live Jira publish for run: a human must confirm"
+
+
+def test_live_publish_without_approval_is_blocked(tmp_path):
+    project = make_project(tmp_path)
+    run = make_tickets_run(project)
+    result = run_bash(project, f"python3 scripts/jira_publish.py {run} --publish")
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "/pm-approve tickets run" in result.stderr
+
+
+def test_dry_run_with_valid_approval_stays_silent(tmp_path):
+    project = make_project(tmp_path)
+    run = approved_run(project)
+    result = run_bash(project, f"python3 scripts/jira_publish.py {run}")
+    assert result.returncode == 0
+    assert result.stdout == ""
 
 
 def test_malformed_input_does_not_crash(tmp_path):

@@ -1,0 +1,19 @@
+{
+  "id": "EV-001",
+  "claim": "33% of 300 support tickets in the period are scheduling conflicts",
+  "claim_template": "{value_pct}% of {n} support tickets in the period are scheduling conflicts",
+  "metric": "ticket_share",
+  "value": 0.33,
+  "segment": "all",
+  "period": "all",
+  "n": 300,
+  "source": "mock_warehouse",
+  "query_id": "ticket_share_by_category",
+  "query_hash": "a7d869f94154b5ebb6964f7f25ac89e3596991469aa365496d7039dc37a7bc8d",
+  "run_at": "2026-10-04T07:26:20.214967+00:00",
+  "confidence": "high",
+  "caveats": [
+    "synthetic mock warehouse data"
+  ],
+  "supports_problem": "PB-1"
+}

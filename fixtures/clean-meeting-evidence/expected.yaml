@@ -1,0 +1,11 @@
+run_id: "2026-01-15-clean-meeting-evidence"
+problem_count: 1
+primary_problem_id: "PB-1"
+primary_problem_validation_status: "VALIDATED"
+parked_problem_count: 0
+ai_proposed: false
+ai_verdict: null
+must_have_open_questions: false
+must_have_disagreements: false
+prd:
+  verdict: "PASS_WITH_RISK"

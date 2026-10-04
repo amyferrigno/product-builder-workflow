@@ -11,6 +11,8 @@ Needs a run folder `runs/<run-id>/` whose PRD is approved at Gate A and whose UX
 
 ## Execution
 
+Before each subagent launch, run `.venv/bin/python scripts/cost_meter.py check runs/<run-id>`. Exit 1 (`STOP:`) means do not launch: tell the human the stage budget is exceeded (they can raise `budgets` in `pm.config.yaml`). A `WARN:` line is relayed.
+
 ### Step 1: Check the UX approval
 
 Run:

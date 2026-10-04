@@ -36,6 +36,8 @@ Exit 1 with error message if:
 
 ### Step 2: Notes Extraction
 
+Before each subagent launch, run `.venv/bin/python scripts/cost_meter.py check <run_dir>`. Exit 1 (`STOP:`) means do not launch: tell the human the stage budget is exceeded (they can raise `budgets` in `pm.config.yaml`). A `WARN:` line is relayed to the human.
+
 Call agent `notes-extractor` with the run directory path only:
 - Agent reads `00-notes/notes.numbered.md`
 - Writes `01-extraction.json`
@@ -106,6 +108,18 @@ If it has enabled providers, run both steps in parallel (two agent calls in one 
 
 Validate both (`scripts/validate_evidence.py <run_dir>` and `scripts/validate_anecdotes.py <run_dir>`) with the one-retry rule those skills define, then continue to the draft. If only one kind of provider is enabled, run only that one and the PRD states the other is not configured. For the offline demo use `--registry fixtures/registry.mock.yaml --config fixtures/pm.config.mock.yaml`.
 
+### Step 7b: Decision: PRD or no-PRD memo
+
+Run:
+```bash
+.venv/bin/python scripts/prd_decision.py <run_dir>
+```
+
+It prints `PRD` or `MEMO`, then the reasons.
+
+- `MEMO`: call agent `prd-writer` in memo mode (task line: "no-PRD memo") with the run directory path. It writes `no-prd-memo.md`. Run `.venv/bin/python scripts/validate_memo.py <run_dir>`; on errors send them to the same agent once and validate again. If it still fails, set `status` to `"failed"` in `state.json`, show the errors and stop. Then show the memo path and its decision line and stop: no PRD draft, no audit, no gate. If the human gives a reason to write the PRD anyway, they rerun with `.venv/bin/python scripts/prd_decision.py <run_dir> --force-prd "<reason>"`; never force it without the human's reason.
+- `PRD`: continue as below.
+
 ### Step 8: PRD draft
 
 Call agent `prd-writer` with paths only (task line: "PRD draft"), passing the run directory path. It reads `02-problem.md`, `01-extraction.json`, `03-evidence/` and `04-anecdotes.json` if they exist, `templates/prd.md`, `templates/prd-ai-addendum.md` and the `product` section of `pm.config.yaml`. It writes `<run_dir>/prd.md`. It never reads `00-notes/`.
@@ -164,4 +178,4 @@ Return error and stop if:
 
 ## Success
 
-Stage 1 ends at one of: `awaiting_approval` (Gate A summary shown), `escalated` (open audit issues shown) or `failed` (validator errors shown). Every state value used is allowed by `schemas/state.schema.json`.
+Stage 1 ends at one of: `no-prd-memo.md` written and validated (no gate), `awaiting_approval` (Gate A summary shown), `escalated` (open audit issues shown) or `failed` (validator errors shown). Every state value used is allowed by `schemas/state.schema.json`.

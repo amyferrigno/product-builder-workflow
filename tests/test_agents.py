@@ -430,3 +430,38 @@ def test_pm_approve_covers_tickets_and_stays_human_only():
     assert "/pm-approve tickets <run-id>" in body
     assert "No override exists for tickets" in body
     assert "Writing Jira keys" in body
+
+
+# --- M8: pm-status, pm-run, decision step ---
+def test_pm_status_and_pm_run_skills_exist_and_are_small():
+    for skill in ("pm-status", "pm-run"):
+        path = REPO / ".claude" / "skills" / skill / "SKILL.md"
+        assert path.exists(), f"{skill} SKILL.md not found"
+        fm = parse_agent_file(path)
+        assert fm["name"] == skill
+        assert fm["description"]
+        assert len(path.read_text().splitlines()) < 200
+
+
+def test_meeting_to_prd_has_decision_step_and_stays_small():
+    path = REPO / ".claude" / "skills" / "meeting-to-prd" / "SKILL.md"
+    body = path.read_text()
+    assert "scripts/prd_decision.py" in body
+    assert "scripts/validate_memo.py" in body
+    assert "scripts/cost_meter.py check" in body
+    assert len(body.splitlines()) < 200
+
+
+def test_pm_run_never_approves_and_names_the_gates():
+    body = (REPO / ".claude" / "skills" / "pm-run" / "SKILL.md").read_text()
+    assert "approve.py" not in body
+    for gate in ("prd", "ux", "tickets"):
+        assert f"/pm-approve {gate} <run-id>" in body
+    assert "scripts/status.py" in body
+    assert "scripts/cost_meter.py check" in body
+
+
+def test_budget_check_in_stage_skills():
+    for skill in ("prd-to-ux", "prd-to-tickets"):
+        body = (REPO / ".claude" / "skills" / skill / "SKILL.md").read_text()
+        assert "scripts/cost_meter.py check" in body

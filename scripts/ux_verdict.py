@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import prd_has_ai_addendum  # noqa: E402
+from audit_verdict import StaleAuditError, prd_has_ai_addendum  # noqa: E402
 from ux_hash import ux_hash  # noqa: E402
 from validate_ux import validate_ux  # noqa: E402
 
@@ -135,6 +135,9 @@ def ux_verdict_for_run(run_dir: Path, repo_root: Path = REPO_ROOT) -> Tuple[str,
         raise ValueError(
             f"UX audit is invalid ({'; '.join(e.message for e in errors)}); run the audit first"
         )
+    # The audit file's own hash decides; state.json is not trusted
+    if audit.get("ux_hash") != current_hash:
+        raise StaleAuditError("UX changed since it was audited; run the audit again")
     return compute_ux_verdict(audit, rubric, current_hash, has_ai, validator_errors)
 
 

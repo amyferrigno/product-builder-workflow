@@ -377,6 +377,63 @@ def test_guard_approvals_asks_with_generic_reason_when_args_missing():
     assert "a human must confirm" in out["permissionDecisionReason"]
 
 
+def test_guard_approvals_asks_for_wrapped_and_unusual_approve_forms():
+    commands = {
+        "bash -c 'python3 scripts/approve.py runs/r1 prd'": ("prd", "runs/r1"),
+        "uv run scripts/approve.py runs/r1 ux": ("ux", "runs/r1"),
+        "python3 -W ignore scripts/approve.py runs/r1 tickets": ("tickets", "runs/r1"),
+        "python3 -m scripts.approve runs/r1 prd": ("prd", "runs/r1"),
+        "$(echo python3) scripts/approve.py runs/r1 ux": ("ux", "runs/r1"),
+    }
+    for command, (gate, run) in commands.items():
+        code, stdout, _ = _bash_hook(command)
+        assert code == 0, command
+        out = json.loads(stdout)["hookSpecificOutput"]
+        assert out["permissionDecision"] == "ask", command
+        assert gate in out["permissionDecisionReason"], command
+        assert run in out["permissionDecisionReason"], command
+
+
+def test_guard_approvals_asks_with_generic_reason_for_runpy():
+    code, stdout, _ = _bash_hook("python3 -c \"import runpy; runpy.run_path('scripts/approve.py')\"")
+    assert code == 0
+    out = json.loads(stdout)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "ask"
+    assert "a human must confirm" in out["permissionDecisionReason"]
+
+
+def test_guard_approvals_blocks_writes_naming_approvals_without_trailing_slash():
+    commands = [
+        "rm -rf runs/r1/approvals",
+        "mv runs/r1/approvals /tmp/x",
+        "touch runs/r1/prd.approved",
+        "rm runs/r1/appro*",
+        "echo x > runs/r1/approv?ls/prd",
+    ]
+    for command in commands:
+        code, _, stderr = _bash_hook(command)
+        assert code == 2, command
+        assert "Blocked" in stderr, command
+
+
+def test_guard_approvals_allows_tools_that_only_mention_the_script():
+    commands = [
+        "git status",
+        "git diff",
+        "grep -r approved README.md",
+        "grep -rn approve.py scripts",
+        "make test",
+        "./.venv/bin/pytest tests/test_approve.py -q",
+        "caffeinate -i ./.venv/bin/pytest tests/ -q",
+        "cat scripts/approve.py",
+        "ls runs/r1/approvals",
+    ]
+    for command in commands:
+        code, stdout, _ = _bash_hook(command)
+        assert code == 0, command
+        assert stdout == "", command
+
+
 def test_guard_approvals_blocks_shell_writes_to_approvals():
     commands = [
         "echo x > runs/r1/approvals/prd.approved",

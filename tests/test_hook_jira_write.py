@@ -97,6 +97,18 @@ def test_allows_allowlisted_and_plain_read_tools(tmp_path):
         assert run_mcp(project, tool).returncode == 0, tool
 
 
+def test_blocks_jira_tools_that_are_not_reads(tmp_path):
+    project = make_project(tmp_path)
+    for tool in ("mcp__jira__writeIssue", "mcp__jira__bulk_import",
+                 "mcp__jira__mergeIssues", "mcp__jira__do_stuff"):
+        assert run_mcp(project, tool).returncode == 2, tool
+
+
+def test_allows_atlassian_user_info(tmp_path):
+    project = make_project(tmp_path)
+    assert run_mcp(project, "mcp__atlassian__atlassianUserInfo").returncode == 0
+
+
 def test_blocks_mcp_write_when_config_missing(tmp_path):
     project = make_project(tmp_path, config=False)
     assert run_mcp(project, "mcp__atlassian__createJiraIssue").returncode == 2

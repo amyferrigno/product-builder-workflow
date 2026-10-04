@@ -939,3 +939,80 @@ def test_check_approval_tickets_invalid_on_corrupt_file(tmp_path):
     code, stdout, _ = run_check_approval(str(run), "tickets")
     assert code == 1
     assert stdout.startswith("invalid")
+
+
+# --- The audit file's own hash decides staleness ------------------------------
+
+def _set_state_artifact_hash(run_dir, key: str, value: str) -> None:
+    path = Path(run_dir) / "state.json"
+    state = json.loads(path.read_text())
+    state["artifact_hashes"][key] = value
+    path.write_text(json.dumps(state))
+
+
+def test_approve_prd_stale_audit_refused_when_state_hash_hand_set():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        prd = Path(run_dir) / "prd.md"
+        prd.write_text("# PRD\n\nChanged after audit.\n")
+        _set_state_artifact_hash(run_dir, "prd", hashlib.sha256(prd.read_bytes()).hexdigest())
+
+        code, _, stderr = run_approve(run_dir, override_reason="ship it")
+
+        assert code == 1
+        assert "PRD changed since it was audited; run the audit again" in stderr
+        assert not (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_prd_audit_file_hash_altered_refused_with_override():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+        audit_path = Path(run_dir) / "prd.audit.json"
+        audit = json.loads(audit_path.read_text())
+        audit["prd_hash"] = "0" * 64
+        audit_path.write_text(json.dumps(audit))
+
+        code, _, stderr = run_approve(run_dir, override_reason="ship it")
+
+        assert code == 1
+        assert "PRD changed since it was audited; run the audit again" in stderr
+        assert not (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_prd_legit_fail_with_override_still_approves():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="FAIL")
+
+        code, _, stderr = run_approve(run_dir, override_reason="Owner accepts")
+
+        assert code == 0, stderr
+        assert (Path(run_dir) / "approvals" / "prd.approved").exists()
+
+
+def test_approve_ux_stale_audit_refused_when_state_hash_hand_set(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    flows = run / "ux" / "flows.md"
+    flows.write_text(flows.read_text() + "\nedited after audit\n")
+    _set_state_artifact_hash(run, "ux", ux_hash(run))
+    code, _, stderr = run_approve(str(run), "ux", override_reason="ship it")
+    assert code == 1
+    assert "UX changed since it was audited; run the audit again" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_audit_file_hash_altered_refused_with_override(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    audit = json.loads((run / "ux.audit.json").read_text())
+    audit["ux_hash"] = "0" * 64
+    (run / "ux.audit.json").write_text(json.dumps(audit))
+    code, _, stderr = run_approve(str(run), "ux", override_reason="ship it")
+    assert code == 1
+    assert "UX changed since it was audited; run the audit again" in stderr
+    assert not (run / "approvals" / "ux.approved").exists()
+
+
+def test_approve_ux_legit_fail_with_override_still_approves(tmp_path):
+    run = audited_run(tmp_path, scores={"req_coverage": 1})
+    code, _, stderr = run_approve(str(run), "ux", override_reason="Demo only")
+    assert code == 0, stderr
+    assert (run / "approvals" / "ux.approved").exists()

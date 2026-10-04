@@ -18,6 +18,10 @@ except ImportError as e:
     sys.exit(2)
 
 
+class StaleAuditError(ValueError):
+    """The audit file was made for a different version of the artifact."""
+
+
 def load_rubric(repo_root: Path) -> dict:
     """Load the audit rubric from templates/audit-prd.rubric.yaml."""
     rubric_path = repo_root / "templates" / "audit-prd.rubric.yaml"
@@ -206,6 +210,9 @@ def verdict_for_run(run_dir: Path, repo_root: Path):
         raise ValueError(
             f"PRD audit is invalid ({'; '.join(e.message for e in errors)}); run the audit first"
         )
+    # The audit file's own hash decides; state.json is not trusted
+    if audit.get("prd_hash") != current_hash:
+        raise StaleAuditError("PRD changed since it was audited; run the audit again")
     return compute_verdict(audit, rubric, current_hash, prd_has_ai_addendum(prd_text))
 
 

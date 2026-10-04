@@ -9,6 +9,7 @@ Exit 0 if allowed (or after printing an "ask" decision), exit 2 if blocked.
 
 import os
 import sys
+import re
 import json
 import shlex
 from pathlib import Path
@@ -109,9 +110,53 @@ def is_plain_read(command: str) -> bool:
     return bool(tokens) and tokens[0] in READ_COMMANDS
 
 
+APPROVE_SCRIPT_RE = re.compile(r"(?<![\w.-])approve\.py")
+APPROVE_MODULE_RE = re.compile(r"-m\s+['\"]?(?:\w+\.)*approve(?![\w.])")
+APPROVAL_PATH_RES = (
+    re.compile(r"/approvals\b"),
+    re.compile(r"\.approved"),
+    re.compile(r"runs/\S*appro\S*"),
+)
+SAFE_FIRST_WORDS = ("grep", "git", "pytest", "make")
+CHAINING = (";", "&", "|", "`", "\n")
+
+
+def mentions_approve_script(command: str):
+    """Return the regex match when the text names the approval script as a token, else None."""
+    return APPROVE_SCRIPT_RE.search(command) or APPROVE_MODULE_RE.search(command)
+
+
+def is_safe_tool_command(command: str) -> bool:
+    """A single grep, git, pytest or make command: it only mentions the script, it does not run it."""
+    if any(ch in command for ch in CHAINING) or "$(" in command:
+        return False
+    tokens = command.split()
+    return bool(tokens) and os.path.basename(tokens[0]) in SAFE_FIRST_WORDS
+
+
+def loose_gate_and_run(command: str, start: int):
+    """Best effort (run_dir, gate) from the words after the script name, for wrapped commands."""
+    words = re.findall(r"[^\s'\"();]+", command[start:])
+    positionals = []
+    skip = False
+    for word in words:
+        if skip:
+            skip = False
+        elif word in OPTIONS_WITH_VALUE:
+            skip = True
+        elif not word.startswith("-"):
+            positionals.append(word)
+    gate = next((a for a in positionals if a in GATES), None)
+    run_dir = next((a for a in positionals if a not in GATES), None)
+    return run_dir, gate
+
+
 def check_bash(command: str):
     """Ask a human for approve.py; block shell tricks that touch approval files."""
     invocations = approve_invocations(command)
+    script_match = mentions_approve_script(command)
+    if not invocations and script_match and not (is_plain_read(command) or is_safe_tool_command(command)):
+        invocations = [loose_gate_and_run(command, script_match.end())]
     if invocations:
         run_dir, gate = invocations[0]
         if run_dir and gate:
@@ -130,7 +175,7 @@ def check_bash(command: str):
         sys.exit(0)
 
     lowered = command.lower()
-    if ("approvals/" in lowered or ".approved" in lowered) and not is_plain_read(command):
+    if any(r.search(lowered) for r in APPROVAL_PATH_RES) and not is_plain_read(command):
         print(
             "Blocked: approval files are written only by scripts/approve.py after a human "
             "runs /pm-approve. Shell commands that change them are not allowed.",

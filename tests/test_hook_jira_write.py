@@ -71,6 +71,18 @@ def test_allows_read_only_and_non_jira_mcp(tmp_path):
         assert run_mcp(project, tool).returncode == 0, tool
 
 
+def test_allows_read_tools_with_write_words_in_name(tmp_path):
+    project = make_project(tmp_path)
+    for tool in ("mcp__atlassian__getTransitionsForJiraIssue", "mcp__atlassian__getJiraIssueRemoteIssueLinks"):
+        assert run_mcp(project, tool).returncode == 0, tool
+
+
+def test_blocks_set_and_patch_writes(tmp_path):
+    project = make_project(tmp_path)
+    for tool in ("mcp__atlassian__setJiraIssueField", "mcp__jira__patch_issue"):
+        assert run_mcp(project, tool).returncode == 2, tool
+
+
 def test_blocks_mcp_write_when_config_missing(tmp_path):
     project = make_project(tmp_path, config=False)
     assert run_mcp(project, "mcp__atlassian__createJiraIssue").returncode == 2

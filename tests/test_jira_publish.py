@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -102,6 +103,34 @@ def test_writes_dryrun_payloads(tmp_path):
     assert "Acceptance criteria:" in description and "AI quality criteria:" in description
     flat = json.dumps(entries).lower()
     assert "story_point" not in flat and "story point" not in flat and "storypoint" not in flat
+
+
+def test_idempotency_label_is_distinct_and_computed_from_id(tmp_path):
+    run = approved_run(tmp_path)
+    assert publish(run, write_config(tmp_path)).returncode == 0
+    entries = json.loads((run / "tickets.dryrun.json").read_text())
+    slug = json.loads((run / "tickets.manifest.json").read_text())["prd_slug"]
+    for entry in entries:
+        assert entry["idempotency_label"] == f"ext-{slug}-{entry['ticket_id'].lower()}"
+    labels = [e["idempotency_label"] for e in entries]
+    assert len(labels) == len(set(labels))
+
+
+def test_refuses_invalid_manifest_even_if_approval_passes(tmp_path, monkeypatch, capsys):
+    run = make_tickets_run(tmp_path)
+    m = json.loads((run / "tickets.manifest.json").read_text())
+    m["epics"][0]["children"][0]["description"] = "Too short"
+    (run / "tickets.manifest.json").write_text(json.dumps(m))
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import jira_publish
+
+    monkeypatch.setattr(jira_publish, "approval_status", lambda run_dir, kind: (True, "ok"))
+    monkeypatch.setattr(sys, "argv", ["jira_publish.py", str(run), "--config", str(write_config(tmp_path))])
+    with pytest.raises(SystemExit) as exc:
+        jira_publish.main()
+    assert exc.value.code == 1
+    assert "T-001" in capsys.readouterr().err
+    assert not (run / "tickets.dryrun.json").exists()
 
 
 def test_no_key_names_story_points(tmp_path):

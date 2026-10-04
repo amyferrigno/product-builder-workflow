@@ -17,6 +17,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_approval import approval_status  # noqa: E402
+from validate_tickets import validate_tickets  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DRYRUN_NAME = "tickets.dryrun.json"
@@ -48,18 +49,17 @@ def _labels(ticket: dict, defaults: List[str]) -> List[str]:
     return out
 
 
-def _idempotency_label(ticket: dict) -> str:
-    for label in ticket.get("labels") or []:
-        if label.startswith("ext-"):
-            return label
-    return ""
+def _idempotency_label(prd_slug: str, ticket: dict) -> str:
+    return f"ext-{prd_slug}-{str(ticket['id']).lower()}"
 
 
-def _entry(ticket: dict, issuetype: str, project_key: str, defaults: List[str], parent) -> dict:
+def _entry(
+    ticket: dict, issuetype: str, project_key: str, defaults: List[str], parent, prd_slug: str
+) -> dict:
     return {
         "ticket_id": ticket["id"],
         "action": "create",
-        "idempotency_label": _idempotency_label(ticket),
+        "idempotency_label": _idempotency_label(prd_slug, ticket),
         "parent_ticket_id": parent,
         "payload": {
             "fields": {
@@ -77,10 +77,11 @@ def _entry(ticket: dict, issuetype: str, project_key: str, defaults: List[str], 
 def build_dryrun(manifest: dict, project_key: str, default_labels: List[str]) -> List[dict]:
     """Ordered entries: all epics first, then all children in manifest order."""
     epics = manifest["epics"]
-    entries = [_entry(e, "Epic", project_key, default_labels, None) for e in epics]
+    slug = manifest["prd_slug"]
+    entries = [_entry(e, "Epic", project_key, default_labels, None, slug) for e in epics]
     for epic in epics:
         for child in epic.get("children", []):
-            entries.append(_entry(child, child["type"], project_key, default_labels, epic["id"]))
+            entries.append(_entry(child, child["type"], project_key, default_labels, epic["id"], slug))
     return entries
 
 
@@ -90,6 +91,9 @@ def publish_dry_run(run_dir: str, config_path: str) -> List[dict]:
     ok, message = approval_status(run_dir, "tickets")
     if not ok:
         raise ValueError(f"tickets approval is not valid ({message}); approve the tickets first")
+    errors = validate_tickets(run_dir)
+    if errors:
+        raise ValueError("ticket manifest is not valid:\n" + "\n".join(errors))
 
     try:
         config = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))

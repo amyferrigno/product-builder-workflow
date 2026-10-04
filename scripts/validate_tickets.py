@@ -34,7 +34,7 @@ MANIFEST_NAME = "tickets.manifest.json"
 EPIC_ID_RE = re.compile(r'^EPIC-\d{2}$')
 CHILD_ID_RE = re.compile(r'^T-\d{3}$')
 SUMMARY_RE = re.compile(r'^\[[^\]]+\] [A-Z][a-z]+ \S')
-BANNED_RE = re.compile(r'\bTODO\b|\bTBD\b|\[\[|lorem', re.IGNORECASE)
+BANNED_RE = re.compile(r'TODO|TBD|\[\[|lorem', re.IGNORECASE)
 PRIORITIES = ("Highest", "High", "Medium", "Low")
 MAX_SUMMARY = 80
 MIN_DESCRIPTION = 40
@@ -83,6 +83,20 @@ def _text_fields(ticket: dict) -> List[str]:
     return [t for t in texts if isinstance(t, str)]
 
 
+def _non_blank(ticket: dict, key: str) -> List[str]:
+    """Entries of a list field that are non-blank strings."""
+    return [x for x in ticket.get(key, []) if isinstance(x, str) and x.strip()]
+
+
+def _blank_errors(tid: str, ticket: dict) -> List[str]:
+    errors: List[str] = []
+    for key in ("acceptance_criteria", "ai_quality_criteria", "analytics_events"):
+        for item in ticket.get(key, []):
+            if not isinstance(item, str) or not item.strip():
+                errors.append(f"{tid}: {key} has a blank entry")
+    return errors
+
+
 def _check_common(tid: str, ticket: dict, prd_slug: str, ai: bool) -> List[str]:
     errors: List[str] = []
     summary = ticket.get("summary", "")
@@ -98,6 +112,11 @@ def _check_common(tid: str, ticket: dict, prd_slug: str, ai: bool) -> List[str]:
     for label in expected_labels(prd_slug, tid, ai)[:3]:
         if label not in labels:
             errors.append(f"{tid}: missing label '{label}'")
+    errors.extend(_blank_errors(tid, ticket))
+    own_ext = f"ext-{prd_slug}-{tid.lower()}"
+    for label in labels:
+        if isinstance(label, str) and label.startswith("ext-") and label != own_ext:
+            errors.append(f"{tid}: label '{label}' belongs to another ticket (only '{own_ext}' is allowed)")
     if ai and "ai-feature" not in labels:
         errors.append(f"{tid}: missing label 'ai-feature' (the PRD has an AI addendum)")
     if not ai and "ai-feature" in labels:
@@ -222,7 +241,7 @@ def validate_tickets(run_dir, repo_root=None) -> List[str]:
             errors.extend(_check_common(cid, child, prd_slug, ai))
             if child["priority"] not in PRIORITIES:
                 errors.append(f"{cid}: priority must be one of {', '.join(PRIORITIES)}")
-            criteria = child["acceptance_criteria"]
+            criteria = _non_blank(child, "acceptance_criteria")
             ctype = child["type"]
 
             if ctype == "Story":
@@ -252,13 +271,13 @@ def validate_tickets(run_dir, repo_root=None) -> List[str]:
                             errors.append(f"{cid}: unknown screen {scr} (not in ux/spec.md)")
                         else:
                             known.update(screen_events[scr])
-                    events = child.get("analytics_events", [])
+                    events = _non_blank(child, "analytics_events")
                     if not events:
                         errors.append(f"{cid}: user-facing story needs at least one analytics_events entry")
                     for event in events:
                         if event not in known:
                             errors.append(f"{cid}: analytics event '{event}' is not listed on its screens")
-                if ai and not child.get("ai_quality_criteria"):
+                if ai and not _non_blank(child, "ai_quality_criteria"):
                     errors.append(f"{cid}: story needs at least one ai_quality_criteria entry (AI feature)")
             else:
                 for scr in child["screen_ids"]:

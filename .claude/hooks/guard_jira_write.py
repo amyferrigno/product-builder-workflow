@@ -15,7 +15,11 @@ import shlex
 import importlib.util
 from pathlib import Path
 
-WRITE_VERBS = ("create", "update", "edit", "delete", "transition", "add", "assign", "move", "link", "comment")
+WRITE_VERBS = (
+    "create", "update", "edit", "delete", "transition", "add", "assign", "move", "link", "comment",
+    "set", "post", "put", "patch", "upload", "archive", "clone",
+)
+READ_PREFIXES = ("get", "search", "list", "read", "fetch", "lookup")
 SEPARATORS = {";", "&&", "||", "|", "&", "\n"}
 
 
@@ -87,6 +91,9 @@ def publish_run_dirs(command: str):
 def check_mcp(tool_name: str, project_dir: str):
     name = tool_name.lower()
     if "jira" not in name and "atlassian" not in name:
+        return
+    action = name.rsplit("__", 1)[-1]
+    if action.startswith(READ_PREFIXES):
         return
     if not any(verb in name for verb in WRITE_VERBS):
         return

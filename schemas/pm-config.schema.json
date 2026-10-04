@@ -4,6 +4,19 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["product", "models", "budgets", "audit", "data", "jira", "ux", "anecdotes"],
+  "$defs": {
+    "tier_prices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_per_mtok", "output_per_mtok", "cache_read_per_mtok", "cache_write_per_mtok"],
+      "properties": {
+        "input_per_mtok": { "type": "number", "minimum": 0 },
+        "output_per_mtok": { "type": "number", "minimum": 0 },
+        "cache_read_per_mtok": { "type": "number", "minimum": 0 },
+        "cache_write_per_mtok": { "type": "number", "minimum": 0 }
+      }
+    }
+  },
   "properties": {
     "product": {
       "type": "object",
@@ -40,6 +53,15 @@
         "stage2": { "type": "number" },
         "stage3": { "type": "number" },
         "warn_at_percent": { "type": "integer" }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "small": { "$ref": "#/$defs/tier_prices" },
+        "medium": { "$ref": "#/$defs/tier_prices" },
+        "large": { "$ref": "#/$defs/tier_prices" }
       }
     },
     "audit": {

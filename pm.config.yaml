@@ -17,6 +17,23 @@ budgets:
   stage2: 2.00
   stage3: 1.00
   warn_at_percent: 80
+# Example prices in USD per million tokens. Edit to your contract prices.
+pricing:
+  small:
+    input_per_mtok: 1
+    output_per_mtok: 5
+    cache_read_per_mtok: 0.1
+    cache_write_per_mtok: 1.25
+  medium:
+    input_per_mtok: 3
+    output_per_mtok: 15
+    cache_read_per_mtok: 0.3
+    cache_write_per_mtok: 3.75
+  large:
+    input_per_mtok: 15
+    output_per_mtok: 75
+    cache_read_per_mtok: 1.5
+    cache_write_per_mtok: 18.75
 audit:
   max_revision_loops: 2
 data:

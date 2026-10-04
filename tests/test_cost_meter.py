@@ -192,13 +192,129 @@ def test_check_uses_only_the_current_stage(tmp_path):
     assert run_meter(project, "check", str(run)).returncode == 0
 
 
-def test_null_entries_count_as_zero_spend(tmp_path):
+def test_null_entries_add_no_spend_but_warn_unparsed(tmp_path):
     project = make_project(tmp_path)
     run = make_run(project)
     write_log(run, [_entry("stage1", None), _entry("stage1", None)])
     result = run_meter(project, "check", str(run))
     assert result.returncode == 0
-    assert result.stdout == ""
+    assert result.stdout.strip() == "WARN: stage1 cost cannot be fully estimated (2 unparsed entries)"
+
+
+def _write_raw_log(run, lines):
+    (run / "cost.log.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize("bad_line", [
+    "not json",
+    "[1, 2]",
+    "42",
+    json.dumps(_entry("stage1", -1.0)),
+    json.dumps({**_entry("stage1", 1.0), "estimated_usd": "1.0"}),
+    json.dumps({**_entry("stage1", 1.0), "estimated_usd": True}),
+])
+def test_damaged_log_line_counts_as_unparsed(tmp_path, bad_line):
+    run = make_run(make_project(tmp_path))
+    _write_raw_log(run, [json.dumps(_entry("stage1", 0.5)), bad_line])
+    summary = cost_meter.summarise(run, CONFIG)
+    assert summary["stage1"]["unparsed"] == 1
+    assert summary["stage1"]["spent_usd"] == 0.5
+
+
+def test_check_warns_on_damaged_line_and_still_stops_on_parsed_part(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project)
+    _write_raw_log(run, ["garbage", json.dumps(_entry("stage1", 0.5))])
+    result = run_meter(project, "check", str(run))
+    assert result.returncode == 0
+    assert result.stdout.strip() == "WARN: stage1 cost cannot be fully estimated (1 unparsed entries)"
+    _write_raw_log(run, ["garbage", json.dumps(_entry("stage1", 3.5))])
+    result = run_meter(project, "check", str(run))
+    assert result.returncode == 1
+    assert result.stdout.startswith("STOP: stage1 budget exceeded")
+    _write_raw_log(run, ["garbage", json.dumps(_entry("stage1", 2.5))])
+    assert run_meter(project, "check", str(run)).stdout.startswith("WARN: stage1 at 83%")
+
+
+def test_check_ignores_unparsed_entries_of_other_stages(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project, stage="stage2")
+    write_log(run, [_entry("stage1", None)])
+    assert run_meter(project, "check", str(run)).stdout == ""
+
+
+def test_check_warns_when_config_is_missing_or_blocks_absent(tmp_path):
+    config = (REPO_ROOT / "pm.config.yaml").read_text(encoding="utf-8")
+    no_budget = re.sub(r"^budgets:.*?(?=^# Example prices)", "", config, flags=re.S | re.M)
+    no_pricing = re.sub(r"# Example prices.*?(?=^audit:)", "", config, flags=re.S | re.M)
+    assert "budgets" not in no_budget and "pricing" not in no_pricing
+    for text, reason in ((no_budget, "no budget"), (no_pricing, "no price table"), ("a: [unclosed", "no price table")):
+        root = tmp_path / f"{reason.replace(' ', '_')}-{len(text)}"
+        root.mkdir()
+        project = make_project(root, config_text=text)
+        run = make_run(project)
+        write_log(run, [_entry("stage1", 1.0)])
+        result = run_meter(project, "check", str(run))
+        assert result.returncode == 0
+        assert result.stdout.strip() == f"WARN: stage1 cost cannot be fully estimated ({reason})"
+
+
+def test_check_missing_config_file_warns(tmp_path):
+    project = make_project(tmp_path)
+    (project / "pm.config.yaml").unlink()
+    run = make_run(project)
+    result = run_meter(project, "check", str(run))
+    assert result.returncode == 0
+    assert result.stdout.strip() == "WARN: stage1 cost cannot be fully estimated (no price table)"
+
+
+def _write_transcript(path, messages):
+    path.write_text("".join(json.dumps({"type": "x", "message": m}) + "\n" for m in messages), encoding="utf-8")
+
+
+def _msg(role, usage, mid):
+    message = {"id": mid, "model": "claude-sonnet-4-5", "usage": usage}
+    if role is not None:
+        message["role"] = role
+    return message
+
+
+def test_transcript_counts_only_assistant_messages(tmp_path):
+    path = tmp_path / "t.jsonl"
+    usage = {"input_tokens": 10, "output_tokens": 5}
+    _write_transcript(path, [_msg("assistant", usage, "a"), _msg("user", usage, "b"), _msg(None, usage, "c")])
+    assert cost_meter.parse_transcript(str(path))["tokens"]["input"] == 10
+
+
+@pytest.mark.parametrize("bad", [-1, 1.5, "7", None, True])
+def test_transcript_skips_message_with_damaged_token_values(tmp_path, bad):
+    path = tmp_path / "t.jsonl"
+    good = {"input_tokens": 10, "output_tokens": 5}
+    _write_transcript(path, [_msg("assistant", good, "a"), _msg("assistant", {"input_tokens": bad, "output_tokens": 99}, "b")])
+    tokens = cost_meter.parse_transcript(str(path))["tokens"]
+    assert tokens["input"] == 10 and tokens["output"] == 5
+
+
+def test_transcript_with_every_message_damaged_is_unparsed(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project)
+    path = tmp_path / "t.jsonl"
+    _write_transcript(path, [_msg("assistant", {"input_tokens": -5}, "a")])
+    assert cost_meter.parse_transcript(str(path))["tokens"] is None
+    run_meter(project, "log", str(run), "--transcript", str(path), "--agent-type", "x")
+    assert read_log(run)[0]["source"] == "unparsed"
+
+
+def test_entry_without_agent_id_is_deduplicated_by_transcript_path(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project)
+    args = ["log", str(run), "--transcript", str(TRANSCRIPTS / "normal.jsonl"), "--agent-type", "x"]
+    run_meter(project, *args)
+    result = run_meter(project, *args)
+    assert result.returncode == 0
+    assert len(read_log(run)) == 1
+    run_meter(project, "log", str(run), "--transcript", str(TRANSCRIPTS / "opus.jsonl"), "--agent-type", "x")
+    assert len(read_log(run)) == 2
 
 
 def test_log_then_check_end_to_end_stops_on_opus(tmp_path):

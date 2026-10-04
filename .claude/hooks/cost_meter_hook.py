@@ -20,6 +20,23 @@ def get_python_executable(repo_root: str) -> str:
     return sys.executable
 
 
+def safe_run_dir(project: str, run_id: str):
+    """Return runs/<run_id> when run_id is a plain folder name directly under runs/, else None."""
+    run_id = run_id.strip()
+    if not run_id or run_id in (".", "..") or run_id.startswith("."):
+        return None
+    if any(c in run_id for c in ("/", "\\", "\0")):
+        return None
+    runs = (Path(project) / "runs").resolve()
+    run_dir = runs / run_id
+    try:
+        if run_dir.resolve().parent != runs or not run_dir.is_dir():
+            return None
+    except (OSError, ValueError):
+        return None
+    return run_dir
+
+
 def run_meter(python_exe: str, script: Path, project_dir: str, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [python_exe, str(script), *args],
@@ -37,9 +54,8 @@ def main() -> None:
         pointer = Path(project_dir) / "runs" / ".active"
         if not script.exists() or not pointer.exists():
             return
-        run_id = pointer.read_text(encoding="utf-8").strip()
-        run_dir = Path(project_dir) / "runs" / run_id
-        if not run_id or "/" in run_id or not run_dir.is_dir():
+        run_dir = safe_run_dir(project_dir, pointer.read_text(encoding="utf-8"))
+        if run_dir is None:
             return
         transcript = data.get("agent_transcript_path")
         agent_type = data.get("agent_type")

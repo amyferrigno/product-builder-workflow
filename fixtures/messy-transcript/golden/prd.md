@@ -45,7 +45,7 @@ No anecdote provider configured. No anecdote records exist for this run.
 
 ### 6c. Evidence gaps
 
-- No data provider: the 12% figure (M-2) comes from a verbal report. How to close: re-run the analytics query once a data connector exists (M3) and attach the result as an evidence card.
+- No data provider: the 12% figure (M-2) comes from a verbal report. How to close: re-run the analytics query once a data connector exists and attach the result as an evidence card.
 - The user test result (M-1) comes from a small sample and is reported verbally. How to close: the Designer shares the test notes, and the test is repeated with more participants.
 - The total number of affected users is not stated. How to close: the Data Analyst counts users with an unread meeting update who have not opened it.
 - Why only 12% have notifications enabled (P-2) is not explained. How to close: the Data Analyst checks where in the product users enable notifications and how many reach that step.

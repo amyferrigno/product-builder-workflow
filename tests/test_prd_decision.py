@@ -39,6 +39,27 @@ def make_run(tmp_path: Path, fixture: str, with_state: bool = True) -> Path:
     return run
 
 
+def valid_card(card_id: str = "EV-001", problem: str = "PB-1") -> dict:
+    return {
+        "id": card_id, "claim": "33% of 300 tickets", "metric": "ticket_share", "value": 0.33, "segment": "all",
+        "period": "all", "n": 300, "source": "mock_warehouse", "query_id": "q", "query_hash": "abc",
+        "run_at": "2026-10-04T00:00:00+00:00", "confidence": "high", "caveats": [], "supports_problem": problem,
+    }
+
+
+def valid_anecdote(anecdote_id: str = "AN-001", problem: str = "PB-1") -> dict:
+    return {
+        "id": anecdote_id, "source": "zendesk", "source_ref": "ticket/1", "date": "2026-06-03", "segment": "SMB",
+        "persona": "Office manager", "pain": "slow", "quote": "It takes too long", "sentiment": -1,
+        "linked_problem": problem, "frequency_hint": None, "consent_ok": True,
+    }
+
+
+def write_card(run: Path, card: dict, name: str = None) -> None:
+    (run / "03-evidence").mkdir(exist_ok=True)
+    (run / "03-evidence" / f"{name or card['id']}.json").write_text(json.dumps(card), encoding="utf-8")
+
+
 def cli(run: Path, *extra: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "scripts/prd_decision.py", str(run), *extra],
@@ -71,23 +92,19 @@ def test_unvalidated_without_support_is_memo(tmp_path):
 
 def test_evidence_card_supports_problem(tmp_path):
     run = make_run(tmp_path, "thin-evidence")
-    (run / "03-evidence").mkdir()
-    card = {"id": "EV-001", "supports_problem": "PB-1"}
-    (run / "03-evidence" / "EV-001.json").write_text(json.dumps(card), encoding="utf-8")
+    write_card(run, valid_card())
     assert decide(run)[0] == "PRD"
 
 
 def test_evidence_card_for_other_problem_does_not_count(tmp_path):
     run = make_run(tmp_path, "thin-evidence")
-    (run / "03-evidence").mkdir()
-    card = {"id": "EV-001", "supports_problem": "PB-9"}
-    (run / "03-evidence" / "EV-001.json").write_text(json.dumps(card), encoding="utf-8")
+    write_card(run, valid_card(problem="PB-9"))
     assert decide(run)[0] == "MEMO"
 
 
 def test_anecdote_supports_problem(tmp_path):
     run = make_run(tmp_path, "thin-evidence")
-    (run / "04-anecdotes.json").write_text(json.dumps([{"id": "AN-001", "linked_problem": "PB-1"}]), encoding="utf-8")
+    (run / "04-anecdotes.json").write_text(json.dumps([valid_anecdote()]), encoding="utf-8")
     assert decide(run)[0] == "PRD"
 
 
@@ -131,3 +148,59 @@ def test_missing_state_is_tolerated(tmp_path):
     assert result.returncode == 0
     assert result.stdout.splitlines()[0] == "MEMO"
     assert not (run / "state.json").exists()
+
+
+def test_invalid_evidence_card_is_ignored_and_named(tmp_path):
+    run = make_run(tmp_path, "thin-evidence")
+    write_card(run, {"id": "EV-001", "supports_problem": "PB-1"})
+    decision, reasons = decide(run)
+    assert decision == "MEMO"
+    assert "Ignored invalid evidence card EV-001." in reasons
+
+
+def test_invalid_card_does_not_block_a_valid_one(tmp_path):
+    run = make_run(tmp_path, "thin-evidence")
+    write_card(run, {"id": "EV-001", "supports_problem": "PB-1"})
+    write_card(run, valid_card("EV-002"))
+    decision, reasons = decide(run)
+    assert decision == "PRD"
+    assert "EV-002" in reasons[0]
+    assert "Ignored invalid evidence card EV-001." in reasons
+
+
+def test_invalid_anecdote_is_ignored_and_named(tmp_path):
+    run = make_run(tmp_path, "thin-evidence")
+    (run / "04-anecdotes.json").write_text(
+        json.dumps([{"id": "AN-001", "linked_problem": "PB-1"}]), encoding="utf-8")
+    decision, reasons = decide(run)
+    assert decision == "MEMO"
+    assert "Ignored invalid anecdote AN-001." in reasons
+
+
+def test_forced_prd_stays_prd_when_decided_again(tmp_path):
+    run = make_run(tmp_path, "thin-evidence")
+    cli(run, "--force-prd", "Sponsor needs a PRD")
+    result = cli(run)
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == ["PRD", "PRD was forced earlier: Sponsor needs a PRD"]
+    state = state_of(run)
+    assert state["outcome"] == "prd"
+    assert state["forced_prd_reason"] == "Sponsor needs a PRD"
+
+
+def test_clear_force_removes_reason_and_decides_normally(tmp_path):
+    run = make_run(tmp_path, "thin-evidence")
+    cli(run, "--force-prd", "Sponsor needs a PRD")
+    result = cli(run, "--clear-force")
+    assert result.returncode == 0
+    assert result.stdout.splitlines()[0] == "MEMO"
+    state = state_of(run)
+    assert state["outcome"] == "no_prd_memo"
+    assert "forced_prd_reason" not in state
+
+
+def test_force_and_clear_together_refused(tmp_path):
+    run = make_run(tmp_path, "thin-evidence")
+    result = cli(run, "--force-prd", "x", "--clear-force")
+    assert result.returncode == 1
+    assert "outcome" not in state_of(run)

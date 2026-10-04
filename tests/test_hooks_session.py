@@ -119,3 +119,19 @@ def test_settings_register_all_four_events():
         commands = [h["command"] for group in settings["hooks"][event] for h in group["hooks"]]
         assert commands == [f'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/{script}"']
         assert (HOOKS / script).is_file()
+
+
+def _listing(root: Path) -> list:
+    return sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+
+
+@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("pointer", ["..", ".", " .. ", "../x", "/tmp", "a\\b", ".hidden"])
+def test_unsafe_active_pointer_is_treated_as_no_active_run(project, name, pointer):
+    (project / "runs" / ".active").write_text(pointer + "\n", encoding="utf-8")
+    (project / "runs" / ".hidden").mkdir()
+    before = _listing(project)
+    result = run_hook(name, project)
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert _listing(project) == before

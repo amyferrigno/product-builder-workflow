@@ -13,16 +13,29 @@ def project_dir() -> str:
     return os.environ.get("CLAUDE_PROJECT_DIR") or str(Path(__file__).resolve().parent.parent.parent)
 
 
+def safe_run_dir(project: str, run_id: str):
+    """Return runs/<run_id> when run_id is a plain folder name directly under runs/, else None."""
+    run_id = run_id.strip()
+    if not run_id or run_id in (".", "..") or run_id.startswith("."):
+        return None
+    if any(c in run_id for c in ("/", "\\", "\0")):
+        return None
+    runs = (Path(project) / "runs").resolve()
+    run_dir = runs / run_id
+    try:
+        if run_dir.resolve().parent != runs or not run_dir.is_dir():
+            return None
+    except (OSError, ValueError):
+        return None
+    return run_dir
+
+
 def active_run(project: str):
     """Return the active run dir, or None."""
     pointer = Path(project) / "runs" / ".active"
     if not pointer.exists():
         return None
-    run_id = pointer.read_text(encoding="utf-8").strip()
-    run_dir = Path(project) / "runs" / run_id
-    if not run_id or "/" in run_id or not run_dir.is_dir():
-        return None
-    return run_dir
+    return safe_run_dir(project, pointer.read_text(encoding="utf-8"))
 
 
 def get_python_executable(project: str) -> str:

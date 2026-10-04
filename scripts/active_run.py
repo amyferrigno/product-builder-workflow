@@ -37,10 +37,17 @@ def get_active(repo_root) -> Optional[Path]:
         run_id = (runs / POINTER_NAME).read_text(encoding="utf-8").strip()
     except (OSError, UnicodeDecodeError):
         return None
-    if not run_id or "/" in run_id or "\\" in run_id or run_id in (".", ".."):
+    if not run_id or run_id in (".", "..") or run_id.startswith("."):
+        return None
+    if any(c in run_id for c in ("/", "\\", "\0")):
         return None
     run_dir = runs / run_id
-    return run_dir if run_dir.is_dir() else None
+    try:
+        if run_dir.resolve().parent != runs.resolve() or not run_dir.is_dir():
+            return None
+    except (OSError, ValueError):
+        return None
+    return run_dir
 
 
 def main(argv=None) -> int:

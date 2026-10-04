@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent))
 from cost_helpers import REPO_ROOT, TRANSCRIPTS, make_project, make_run, read_log, write_log  # noqa: E402
 
@@ -71,7 +73,7 @@ def test_nonexistent_transcript_file_logs_unparsed_and_exits_0(tmp_path):
     activate(project, run)
     result = run_hook(project, payload(tmp_path / "nope.jsonl"))
     assert result.returncode == 0
-    assert result.stdout == ""
+    assert "cannot be fully estimated" in json.loads(result.stdout)["systemMessage"]
     assert read_log(run)[0]["source"] == "unparsed"
 
 
@@ -116,3 +118,30 @@ def test_stop_message_is_json_and_exit_is_still_0(tmp_path):
     assert result.returncode == 0
     message = json.loads(result.stdout)
     assert message["systemMessage"].startswith("STOP: stage1 budget exceeded")
+
+
+def _listing(root: Path) -> list:
+    return sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+
+
+@pytest.mark.parametrize("pointer", ["..", ".", " .. ", "../x", "/tmp", "a\\b", ".hidden"])
+def test_unsafe_active_pointer_is_treated_as_no_active_run(tmp_path, pointer):
+    project = make_project(tmp_path)
+    make_run(project)
+    (project / "runs" / ".hidden").mkdir()
+    (project / "runs" / ".active").write_text(pointer + "\n", encoding="utf-8")
+    before = _listing(project)
+    result = run_hook(project, payload(TRANSCRIPTS / "normal.jsonl"))
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert _listing(project) == before
+
+
+def test_unparsed_warning_is_relayed_as_system_message(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project)
+    activate(project, run)
+    result = run_hook(project, payload(tmp_path / "nope.jsonl"))
+    assert result.returncode == 0
+    message = json.loads(result.stdout)
+    assert message["systemMessage"] == "WARN: stage1 cost cannot be fully estimated (1 unparsed entries)"

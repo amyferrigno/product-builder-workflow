@@ -15,6 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import validate_prd as vp  # noqa: E402
 
+LIST_MARKER_RE = re.compile(r'^\s*(?:[-*+]|\d+[.)])\s')
+
 MEMO_HEADINGS = [
     "1. Decision",
     "2. Problem hypothesis",
@@ -24,6 +26,26 @@ MEMO_HEADINGS = [
     "6. Parked solution idea",
     "7. Sources",
 ]
+
+
+FENCE_RE = re.compile(r'^ {0,3}(`{3,}|~{3,})')
+
+
+def remove_code_blocks(text: str) -> str:
+    """Drop fenced code blocks (``` or ~~~), fences included. An unclosed fence runs to the end."""
+    kept: List[str] = []
+    fence = None
+    for line in text.split('\n'):
+        match = FENCE_RE.match(line)
+        if fence is None:
+            if match:
+                fence = match.group(1)
+            else:
+                kept.append(line)
+        elif match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence) \
+                and not line.strip().strip(fence[0]):
+            fence = None
+    return '\n'.join(kept)
 
 
 def split_sections(text: str) -> Dict[str, str]:
@@ -52,10 +74,14 @@ def validate_memo(run_dir: str) -> List[str]:
 
     errors: List[str] = []
     text = vp.remove_html_comments(raw)
+    structure = remove_code_blocks(text)  # headings and sections ignore comments and code blocks
 
     # Headings present, in order, non-empty
-    found_order = [line[3:].strip() for line in text.split('\n') if line.startswith('## ')]
-    sections = split_sections(text)
+    found_order = [line[3:].strip() for line in structure.split('\n') if line.startswith('## ')]
+    for heading in found_order:
+        if heading not in MEMO_HEADINGS:
+            errors.append(f"Unexpected heading: ## {heading}")
+    sections = split_sections(structure)
     for heading in MEMO_HEADINGS:
         if heading not in sections:
             errors.append(f"Missing heading: ## {heading}")
@@ -78,7 +104,10 @@ def validate_memo(run_dir: str) -> List[str]:
     extraction: dict = {}
     extraction_ids = set()
     try:
-        extraction = vp.load_json_file(run_path / "01-extraction.json")
+        loaded = vp.load_json_file(run_path / "01-extraction.json")
+        if not isinstance(loaded, dict):
+            raise ValueError("01-extraction.json must be a JSON object")
+        extraction = loaded
         extraction_ids, _ = vp.extract_extraction_ids(extraction)
     except (FileNotFoundError, ValueError) as e:
         errors.append(str(e))
@@ -115,6 +144,9 @@ def validate_memo(run_dir: str) -> List[str]:
     items = [ln for ln in sections.get(MEMO_HEADINGS[3], "").split('\n') if vp.LIST_ITEM_RE.match(ln)]
     if len(items) < 2:
         errors.append("Section 4: needs at least two evidence items as a list")
+    for item in items:
+        if len(LIST_MARKER_RE.sub('', item, count=1).split()) < 3:
+            errors.append(f"Section 4: list item needs at least three words: {item.strip()}")
 
     # No TODO / TBD / [[
     for match in re.finditer(r'\bTODO\b|\bTBD\b', text):

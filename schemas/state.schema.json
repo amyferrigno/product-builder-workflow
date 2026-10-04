@@ -65,6 +65,11 @@
       "additionalProperties": { "type": "string" }
     },
     "updated_at": { "type": "string" },
+    "outcome": {
+      "type": "string",
+      "enum": ["prd", "no_prd_memo"]
+    },
+    "forced_prd_reason": { "type": "string" },
     "audit_loops": {
       "type": "object",
       "additionalProperties": false,

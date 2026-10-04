@@ -10,3 +10,4 @@ ai_verdict_allowed:
 must_have_open_questions: false
 must_have_disagreements: false
 must_have_reframed_from_solution: true
+decision: "MEMO"

@@ -1,0 +1,72 @@
+{
+  "run_id": "2026-01-15-messy-transcript",
+  "prd_hash": "bb14f0b5d993689bf8cb82f1bf273e4dd0f861615bf86dcd1887c95b0196b7b2",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 3,
+      "justification": "Specific and solution-agnostic, tied to the user test and analytics figures (M-1, M-2); the total number of affected users and any workaround are stated as unknown."
+    },
+    {
+      "id": "evidence_strength",
+      "score": 2,
+      "justification": "Both figures (M-1, M-2) were only spoken in the meeting: no provider data, no evidence cards, no anecdote records. The sample of 8 test users is small and sections 6a to 6c say so, but spoken evidence is a claim, so this is a 2.",
+      "fix": "Close the gaps in 6c: configure a data provider and an anecdote source, re-run the figures through them, and attach a confidence level to each figure.",
+      "sections": [
+        "6",
+        "6a",
+        "6b"
+      ]
+    },
+    {
+      "id": "strategic_fit",
+      "score": 2,
+      "justification": "The notes state no strategy link and the product vision and strategy in the config are placeholders; the PRD only ties the work to the backlog decision (D-1).",
+      "fix": "Fill in the product vision and strategy document, then state how the notification work serves them and whether it belongs on the roadmap rather than only the backlog.",
+      "sections": [
+        "4"
+      ]
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "One primary metric (MET-001) with a labelled proposed target and timeframe, a known baseline from the user test (M-1), one guardrail with a baseline (M-2) and stated instrumentation."
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Non-goals in section 7 and in/out lists in section 13 keep the two parked problems and the outage out, consistent with decisions D-2 and D-3."
+    },
+    {
+      "id": "feasibility",
+      "score": 2,
+      "justification": "No effort estimate, no owner for the data work and no check that an unread count can be computed; only assumptions are listed.",
+      "fix": "Get an effort estimate from Engineering, confirm the unread count can be computed per user, and name data owners for the re-measurement.",
+      "sections": [
+        "10",
+        "14"
+      ]
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All five requirements have Given/When/Then criteria; the no-unread-notifications edge case is covered by REQ-004."
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Four risks each carry a mitigation, and dependencies and assumptions are listed in section 14."
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Claims cite extraction IDs, requirements and metrics are numbered, and every number in sections 2, 3 and 6 traces to an extraction item (M-1, M-2)."
+    }
+  ],
+  "hallucination_check": {
+    "unsupported_numbers": [],
+    "unsupported_quotes": [],
+    "unsupported_decisions": []
+  }
+}

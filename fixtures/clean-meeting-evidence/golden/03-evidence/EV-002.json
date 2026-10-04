@@ -1,0 +1,19 @@
+{
+  "id": "EV-002",
+  "claim": "Enterprise accounts exchange 12.22 messages per completed meeting on average (n=142)",
+  "claim_template": "Enterprise accounts exchange {value} messages per completed meeting on average (n={n})",
+  "metric": "avg_messages_per_meeting",
+  "value": 12.22,
+  "segment": "enterprise",
+  "period": "all",
+  "n": 142,
+  "source": "mock_warehouse",
+  "query_id": "avg_messages_per_meeting",
+  "query_hash": "9bb437720b3b097aff695b71afd0155318d62f726992697c6f2a09e87ecc104c",
+  "run_at": "2026-10-04T07:26:20.635276+00:00",
+  "confidence": "high",
+  "caveats": [
+    "synthetic mock warehouse data"
+  ],
+  "supports_problem": "PB-1"
+}

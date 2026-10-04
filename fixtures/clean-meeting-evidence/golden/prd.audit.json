@@ -1,0 +1,67 @@
+{
+  "run_id": "2026-01-15-clean-meeting-evidence",
+  "prd_hash": "2eceb78e7639db6715cde5c009803542b4f18266bf4121259271cec2f7f64987",
+  "ai_feature": false,
+  "dimensions": [
+    {
+      "id": "problem_clarity",
+      "score": 3,
+      "justification": "Specific, validated by ticket, log and interview figures from the notes (M-1, M-3, M-4) and by provider cards (EV-001, EV-003), and solution-agnostic in section 3; no alternative hypotheses considered."
+    },
+    {
+      "id": "evidence_strength",
+      "score": 3,
+      "justification": "Three evidence cards (EV-001, EV-002, EV-003) from the data provider with sample sizes and high confidence, and four anecdote records including a counter-anecdote (AN-014), all cited. The data is synthetic mock data and disagrees in scale with the verbal figures (M-1, M-3), and the interviews are still verbal only, so this stays at 3.",
+      "fix": "Re-run the queries on the real warehouse, reconcile the message count and ticket share definitions, and capture the interviews as anecdote records.",
+      "sections": [
+        "6",
+        "6a",
+        "6b"
+      ]
+    },
+    {
+      "id": "strategic_fit",
+      "score": 2,
+      "justification": "Tied to the Q4 roadmap decision (D-1), the unsigned large deal (R-1) and churn (M-6), but the config strategy fields are still placeholders and the notes state no wider strategy, so this is capped at 2.",
+      "fix": "Fill in the strategy fields in the config and link the work to a stated company objective.",
+      "sections": [
+        "4"
+      ]
+    },
+    {
+      "id": "success_metrics",
+      "score": 3,
+      "justification": "One primary metric (MET-001) with a labelled proposed target and timeframe, two guardrails and instrumentation from the logs; the baseline is flagged as conflicting between the notes (M-3) and EV-002, to be re-measured."
+    },
+    {
+      "id": "scope_discipline",
+      "score": 3,
+      "justification": "Non-goals in section 7 and in/out lists in section 13 both rest on decision D-2."
+    },
+    {
+      "id": "feasibility",
+      "score": 3,
+      "justification": "The 8 week estimate (M-7), API access and enterprise IT approval are listed as dependencies and assumptions."
+    },
+    {
+      "id": "testability",
+      "score": 3,
+      "justification": "All six requirements have Given/When/Then criteria; edge cases are limited to the enterprise approval case."
+    },
+    {
+      "id": "risk_coverage",
+      "score": 3,
+      "justification": "Five key risks each carry a mitigation, and dependencies are called out in section 14."
+    },
+    {
+      "id": "traceability",
+      "score": 3,
+      "justification": "Claims cite extraction IDs, requirements and metrics are numbered, and every number in sections 2, 3 and 6 traces to an extraction item."
+    }
+  ],
+  "hallucination_check": {
+    "unsupported_numbers": [],
+    "unsupported_quotes": [],
+    "unsupported_decisions": []
+  }
+}

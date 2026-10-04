@@ -309,6 +309,15 @@ def main():
         print("Error: state.json validation failed", file=sys.stderr)
         sys.exit(1)
 
+    # Make this the active run only when it lives in the repo's own runs/ folder
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import active_run
+    if active_run.is_repo_run(run_dir):
+        try:
+            active_run.set_active(run_dir)
+        except (ValueError, OSError):
+            print("Warning: could not set the active run", file=sys.stderr)
+
     # Count lines
     if numbered_content:
         line_count = len(numbered_content.split('\n'))

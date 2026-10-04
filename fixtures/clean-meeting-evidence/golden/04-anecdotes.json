@@ -1,0 +1,58 @@
+[
+  {
+    "id": "AN-001",
+    "source": "zendesk",
+    "source_ref": "ticket/48201",
+    "date": "2026-06-03",
+    "segment": "SMB",
+    "persona": "Office manager",
+    "pain": "Finding a meeting slot across three calendars takes too long",
+    "quote": "Every time I need to book a client call I open three calendars and compare them by eye. It takes me twenty minutes for a thirty minute call. Then I still have to email the other side to confirm, wait…",
+    "sentiment": -2,
+    "linked_problem": "PB-1",
+    "frequency_hint": "EV-003",
+    "consent_ok": true
+  },
+  {
+    "id": "AN-002",
+    "source": "zendesk",
+    "source_ref": "ticket/48202",
+    "date": "2026-06-05",
+    "segment": "Mid-market",
+    "persona": "Sales operations lead",
+    "pain": "Back-and-forth emails to agree a time",
+    "quote": "We send five or six emails just to agree a time for one demo. Prospects give up before we ever confirm the slot.",
+    "sentiment": -2,
+    "linked_problem": "PB-1",
+    "frequency_hint": "EV-002",
+    "consent_ok": true
+  },
+  {
+    "id": "AN-008",
+    "source": "gong",
+    "source_ref": "call/7711",
+    "date": "2026-06-24",
+    "segment": "Enterprise",
+    "persona": "Director of IT",
+    "pain": "Integration approval takes months",
+    "quote": "Getting a calendar integration through our review board took four months. By then the team had gone back to email threads to schedule meetings.",
+    "sentiment": -2,
+    "linked_problem": "PB-1",
+    "frequency_hint": null,
+    "consent_ok": true
+  },
+  {
+    "id": "AN-014",
+    "source": "gong",
+    "source_ref": "call/7714",
+    "date": "2026-07-23",
+    "segment": "Mid-market",
+    "persona": "Customer success director",
+    "pain": "Scheduling is why we chose you",
+    "quote": "Smart scheduling was the reason we picked you over the other vendors. Meetings with customers get booked in a couple of clicks and that has changed how we work.",
+    "sentiment": 2,
+    "linked_problem": "PB-1",
+    "frequency_hint": null,
+    "consent_ok": true
+  }
+]

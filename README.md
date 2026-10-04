@@ -1,153 +1,132 @@
 # Agentic PM Workflow
 
-An AI-driven workflow to turn meeting notes into audited PRDs, UX mocks, and Jira tickets. Multi-stage pipeline with human approval gates.
+This tool turns meeting notes into an audited PRD (or an honest "no PRD yet" memo), then UX mocks, then Jira tickets. Scripts check the facts at every step, models draft and review, and a human approves at three gates.
 
-## Setup
+## Flow
 
-```bash
-make setup    # Create .venv, install dependencies (Python 3.9+)
+```mermaid
+flowchart TD
+    N[Meeting notes] --> E[Extraction]
+    E --> P[Problem framing]
+    P --> EV[Evidence: data and anecdotes]
+    EV --> D{PRD or memo?}
+    D -- memo --> M[No-PRD memo]
+    D -- PRD --> PRD[PRD draft]
+    PRD --> PA[PRD audit]
+    PA --> GA[/Gate A: human approves PRD/]
+    GA --> UX[UX mocks]
+    UX --> UA[UX audit]
+    UA --> GB[/Gate B: human approves UX/]
+    GB --> T[Tickets]
+    T --> DOR[Definition of Ready]
+    DOR --> GC[/Gate C: human approves tickets/]
+    GC --> DR[Dry run]
+    DR --> PUB[Publish to Jira, human only]
 ```
 
-## Run Tests
+## Quickstart
 
 ```bash
-make test     # Run pytest
+make setup    # create .venv and install dependencies (Python 3.9+)
+make test     # run the test suite
+make eval     # check every fixture end to end against its expected result
 ```
 
-All tests must pass before merging. Schema validation is automatic.
+Tip: the test suite takes a couple of minutes. On a laptop, run `caffeinate -i make test` so the machine does not sleep.
 
-Tip: the suite takes about two minutes. On a laptop, run long test runs as `caffeinate -i make test` so the machine does not sleep and slow the run down.
+Then, in Claude Code, run the demo notes through the whole flow:
 
-## Controls and early warnings
+```
+/pm-run fixtures/clean-meeting/notes.md
+```
 
-The controls are the scripts. `approve.py` recomputes the verdict from the audit file at approval time (it does not trust `state.json`). `check_approval.py` checks that an approval still matches the current files. `jira_publish.py` re-checks the approval and the Definition of Ready before it does anything. The database authorizer enforces read-only, aggregate-only queries.
+`/pm-run` does intake, extraction, problem framing, evidence, the PRD, validation and the audit. It then stops at each gate:
 
-The hooks in `.claude/hooks/` are early warnings: they stop the model early and explain why, but the scripts do not depend on them. Every approval command also triggers a confirmation prompt in Claude Code (the approvals hook answers "ask"), so a human accepts each approval.
+1. **Gate A (PRD).** It shows a one-screen summary. You run `/pm-approve prd <run-id>`, then `/pm-run <run-id>` again.
+2. **Gate B (UX).** It designs and audits the screens and shows a summary. You run `/pm-approve ux <run-id>`, then `/pm-run <run-id>` again.
+3. **Gate C (tickets).** It plans the tickets, checks the Definition of Ready and shows a summary. You read `tickets.preview.md`, run `/pm-approve tickets <run-id>`, then `/pm-run <run-id>` again. It then writes the dry-run payloads and stops. Nothing is sent to Jira.
 
-## Milestones
+`/pm-run` never approves and never publishes. If the notes give no evidence for the main problem, the run ends with a no-PRD memo instead of a PRD. To write a PRD anyway, give a reason: `.venv/bin/python scripts/prd_decision.py runs/<run-id> --force-prd "<reason>"`.
 
+## Commands
 
-- **M0** (done): Scaffold—repo layout, config, schemas, validator, tests.
-- **M1** (done): Extraction + problem framing.
-- **M2** (done): PRD writer + auditor.
-- **M3 + M4** (done, merged): Data enrichment and customer anecdotes.
-- **M5** (done): UX design (Stage 2).
-- **M6** (done): Jira dry-run (Stage 3).
-- **Hardening** (done): recomputed verdicts, human prompt on approvals, guard fixes.
-- **M7** (done): Jira publish, proven against a fake Jira.
-- **M8**: Cost + polish.
+Skills live in `.claude/skills/`.
 
-## Running the Workflow (M1: Extraction + Problem Framing)
+| Command | What it does |
+|---------|--------------|
+| `/pm-run <notes path or run-id>` | Drives the whole flow and stops at each gate. |
+| `/pm-status [run-id]` | Shows stage, verdicts, approvals, cost and the next command. Changes nothing. |
+| `/pm-prd <path-or-paste>` | Stage 1: intake to PRD (or memo), audit, stops at Gate A. |
+| `/pm-audit prd <run-id>` | Audits an existing or hand-written PRD. |
+| `/pm-enrich <run-id>` | Pulls numbers from a data provider into evidence cards. |
+| `/pm-anecdotes <run-id>` | Pulls and curates customer quotes. |
+| `/pm-ux <run-id>` | Stage 2: UX from an approved PRD, audit, stops at Gate B. |
+| `/pm-audit ux <run-id>` | Audits an existing `ux/` folder. |
+| `/pm-tickets <run-id>` | Stage 3: tickets from an approved UX, stops at Gate C, then the dry run. |
+| `/pm-approve prd\|ux\|tickets <run-id>` | Human only. Approves a gate, tied to the file hashes. Tickets have no override. |
+| `/pm-publish <run-id>` | Human only. Dry run, then a live Jira publish when the config allows it. |
 
-### Intake: Convert notes to numbered, citable source
+## What is enforced by scripts, and what is an early warning
+
+The controls are the scripts:
+
+- `approve.py` recomputes the verdict from the audit file at approval time. It does not trust `state.json`.
+- `check_approval.py` checks that an approval still matches the current files. Editing the PRD, UX or manifest after approval makes it stale.
+- `jira_publish.py` re-checks the approval and the Definition of Ready before it does anything, and needs both `jira.mode: publish` and `--publish` to write.
+- The validators (`validate_extraction.py`, `validate_problem.py`, `validate_prd.py`, `validate_memo.py`, `validate_evidence.py`, `validate_anecdotes.py`, `validate_ux.py`, `validate_tickets.py`) check structure, citations and number tracing. Verdicts come from `render_audit.py` and `render_ux_audit.py`, never from a model.
+- The mock warehouse enforces read-only, aggregate-only queries with a database authorizer.
+- The cost check (`cost_meter.py check`) is a script the skills call before each subagent.
+
+The hooks in `.claude/hooks/` are early warnings. They stop the model early and explain why, but the scripts do not depend on them:
+
+- `guard_approvals.py` (before Write/Edit): blocks writes under `runs/*/approvals/`.
+- `guard_stage_gate.py` (before Write/Edit): blocks `ux/` writes unless the PRD approval is valid, and `tickets.*` writes unless the UX approval is valid. It allows the write if it cannot run its check.
+- `guard_jira_write.py` (before Bash and `mcp__*`): blocks Jira write tools and direct HTTP calls to a Jira site, blocks `jira_publish.py` without a valid tickets approval, and asks for confirmation on `--publish`.
+- `guard_readonly_query.py` (before Bash and `mcp__*`): blocks mutating or non-aggregate SQL.
+- `validate_artifact.py` and `pii_scan.py` (after Write/Edit): run the PRD validator and the PII scan on the files they cover.
+- `cost_meter_hook.py` (SubagentStop): logs the cost of each subagent and warns.
+- `load_context.py` (SessionStart), `checkpoint.py` (PreCompact) and `close_out.py` (Stop): put the active run's status in context, write `checkpoint.md` and record status snapshots in `session.log.jsonl`.
+
+Every approval command also triggers a confirmation prompt in Claude Code, so a human accepts each approval.
+
+## Agents
+
+Model tiers come from `pm.config.yaml` (`small` is haiku, `medium` is sonnet, `large` is opus).
+
+| Agent | Tier | Tools | Job |
+|-------|------|-------|-----|
+| `notes-extractor` | small | Read, Write | Extracts items from numbered notes into `01-extraction.json`. |
+| `prd-writer` | large | Read, Write, Edit | Problem framing, PRD draft, PRD revision and the no-PRD memo. |
+| `prd-auditor` | medium | Read | Scores the PRD and returns audit JSON only. |
+| `data-enricher` | medium | Read, Bash | Picks library queries and runs `enrich.py`. Never writes cards. |
+| `anecdote-curator` | small | Read, Write | Keeps 3 to 5 scrubbed quotes, copied unchanged. |
+| `ux-designer` | medium | Read, Write, Edit, Bash | Designs and revises the UX folder. |
+| `ux-auditor` | medium | Read | Scores the UX and returns audit JSON only. |
+| `ticket-architect` | medium | Read, Write, Bash | Plans and revises the ticket manifest. |
+| `jira-publisher` | small | Read, Bash | Runs `jira_publish.py` for a live publish. |
+
+## Cost and status
+
+Each subagent run is logged to `runs/<id>/cost.log.jsonl` by a SubagentStop hook. Hooks receive no token counts, so the cost is an estimate: the meter reads the subagent transcript, sums the tokens and prices them with the `pricing` block in `pm.config.yaml`. Those prices are examples. Edit them to your contract prices. If a transcript cannot be read, the entry is logged with null values and nothing is guessed. The main session's own cost is not counted.
+
+Budgets are per stage (`budgets.stage1`, `stage2`, `stage3`). At `budgets.warn_at_percent` the check prints a `WARN:` line. At 100 percent it prints `STOP:` and exits 1, and the skills do not launch another subagent. To continue, raise the budget in `pm.config.yaml`.
 
 ```bash
-# From a file
-.venv/bin/python scripts/intake.py path/to/notes.md [--slug name] [--date YYYY-MM-DD]
-
-# From stdin
-echo "notes here" | .venv/bin/python scripts/intake.py - --slug mymeeting
-
-# Output: run ID and path to numbered notes
+.venv/bin/python scripts/cost_meter.py summary runs/<run-id>   # spent, budget and percent per stage
+.venv/bin/python scripts/status.py runs/<run-id>               # full status and next command
 ```
 
-Supports `.md`, `.txt`, `.docx`, and stdin. Creates `runs/<date>-<slug>/` with numbered notes and `state.json`.
+`/pm-status [run-id]` shows the same status for the active run or a given run.
 
-### Validators
+## What each stage checks
 
-```bash
-# Check extraction.json
-.venv/bin/python scripts/validate_extraction.py runs/2026-01-15-demo/
+**Stage 1: extraction, problem, PRD.** Intake numbers every line of the notes so each claim can cite a line. `scripts/validate_extraction.py` and `validate_problem.py` check citations and the AI-verdict logic. `prd_decision.py` says MEMO when the main problem is unvalidated and the run has no evidence card and no anecdote for it; the memo (`no-prd-memo.md`) is checked by `validate_memo.py`. `validate_prd.py` checks structure, IDs, citations and number tracing, and `render_audit.py` turns `prd.audit.json` into a verdict. A FAIL goes through up to `audit.max_revision_loops` revisions, then escalates to the human.
 
-# Check problem.md
-.venv/bin/python scripts/validate_problem.py runs/2026-01-15-demo/
-```
+**Stage 2: UX.** `/pm-ux` writes `runs/<run-id>/ux/`: `flows.md` (mermaid diagrams), `screens/SCR-###-<name>.html` (one clickable mock per screen with every required state, plus five extra states for an AI feature), `index.html` and `spec.md`. `scripts/validate_ux.py` checks required states, that every Must requirement maps to a screen, self-contained files, design tokens only, labels and alt text, and that index and spec match the screens. The `ux-auditor` judges coverage, AI trust, accessibility and copy clarity. If the script finds errors, the verdict is FAIL whatever the auditor scored. Gate B writes `traceability.md` (REQ to screens).
 
-Both exit 1 on errors, print one error per line. Extraction validator enforces that all cited lines are non-blank. Problem validator also checks AI verdict logic.
+**Stage 3: tickets.** `/pm-tickets` writes `tickets.manifest.json`: Epics, Stories, Tasks and Spikes, never Sub-tasks and never story points. The Definition of Ready (`scripts/validate_tickets.py`, no model) checks schema, ids and labels, summary format (`[Area] Verb object`, at most 80 characters), no TODO or TBD, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events from the spec, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle, and every `jira_key` null before publishing. `scripts/preview_tickets.py` writes `tickets.preview.md`. After Gate C, `scripts/jira_publish.py runs/<run-id>` writes `tickets.dryrun.json`, the exact Jira payloads. The dry run sends nothing to Jira. Changing only a `jira_key` does not make the approval stale.
 
-## Running the Workflow (M2: PRD, audit, approval)
-
-Commands (skills in `.claude/skills/`):
-
-- `/pm-prd <path-or-paste>`: intake, extraction, problem framing, PRD draft, validation, audit, revision loop (up to `audit.max_revision_loops`), then stops at Human Gate A with a summary.
-- `/pm-audit prd <run_dir>`: audit an existing or hand-written PRD in a run folder.
-- `/pm-approve prd <run-id> [override reason]`: human only. Approves the PRD, tied to its hash.
-- `/pm-ux <run-id>`: Stage 2. Needs an approved PRD. Designs, validates, audits, loops, then stops at Human Gate B.
-- `/pm-audit ux <run-id>`: audit an existing `ux/` folder.
-- `/pm-approve ux <run-id> [override reason]`: human only. Approves the UX (Gate B).
-- `/pm-tickets <run-id>`: Stage 3. Needs an approved UX. Plans and validates tickets, stops at Human Gate C, and after approval writes the dry-run payloads.
-- `/pm-approve tickets <run-id>`: human only. Approves the tickets (Gate C). No override exists.
-- `/pm-publish <run-id>`: human only. Dry run first, then a live publish to Jira when the config allows it. See "Going live with Jira".
-
-Scripts:
-
-```bash
-.venv/bin/python scripts/validate_prd.py runs/<run-id>/       # structure, IDs, citations, number tracing
-.venv/bin/python scripts/render_audit.py runs/<run-id>/       # prd.audit.json -> verdict, prd.audit.md, state.json
-.venv/bin/python scripts/audit_verdict.py runs/<run-id>/      # verdict only
-.venv/bin/python scripts/gate_summary.py runs/<run-id>/ prd   # one-screen Gate A summary
-.venv/bin/python scripts/approve.py runs/<run-id>/ prd [--override "reason"]
-.venv/bin/python scripts/check_approval.py runs/<run-id>/ prd # exit 0 only if approval matches current prd.md
-```
-
-Hooks (`.claude/settings.json`):
-
-- `guard_approvals.py` (before Write/Edit): blocks any write under `runs/*/approvals/`.
-- `validate_artifact.py` (after Write/Edit): runs `validate_prd.py` when `runs/*/prd.md` is edited and reports errors.
-- `guard_stage_gate.py` (before Write/Edit): blocks writes under `runs/*/ux/` unless the PRD approval is valid, and writes to `runs/*/tickets.*` unless the UX approval is valid.
-- `guard_jira_write.py` (before Bash and `mcp__*`): blocks a Jira write tool (in every mode) and a `curl` to atlassian.net, blocks `jira_publish.py` when the tickets approval is not valid, and asks a human to confirm when `jira_publish.py` runs with `--publish`. It is an early warning; the control is `scripts/jira_publish.py`, which refuses on its own.
-
-The stage gate hook covers Write and Edit only, and it allows the write if it cannot run its check, so it is an early warning. The real control is `scripts/approve.py` and `scripts/check_approval.py`, which refuse to proceed without a valid approval.
-
-Agents: `prd-writer` (problem framing, PRD draft, PRD revision) and `prd-auditor` (read-only, returns audit JSON). The verdict is computed by script, not by the auditor.
-
-## Stage 2: UX (M5)
-
-`/pm-ux <run-id>` turns an approved PRD into files under `runs/<run-id>/ux/`:
-
-- `flows.md`: one section per user flow with a mermaid diagram.
-- `screens/SCR-###-<name>.html`: one clickable mock per screen, with every required state (default, loading, empty, error, success; for an AI feature also low-confidence, user-edit, regenerate, explanation, escalation).
-- `index.html`: a gallery linking to every screen and every state.
-- `spec.md`: purpose, requirements, components, copy, interactions and analytics events for each screen.
-
-What the script checks (`scripts/validate_ux.py`): required states, every Must requirement mapped to a screen, REQ ids that exist, self-contained files, design tokens only, labels and alt text, and that the index and spec match the screens. What the auditor judges (agent `ux-auditor`, rubric `templates/audit-ux.rubric.yaml`): requirement coverage, required states, AI trust, control and recovery, accessibility, token consistency and copy clarity. If the script finds errors, the verdict is FAIL whatever the auditor scored.
-
-Gate B: the human runs `/pm-approve ux <run-id>`. It writes `traceability.md` (REQ to screens) and leaves `prd.md` untouched. Changing the PRD or any UX file afterwards makes the UX approval stale. Screenshots are not included: no headless browser and no new dependency in M5.
-
-## Stage 3: tickets, dry run (M6)
-
-`/pm-tickets <run-id>` turns an approved PRD and approved UX into `runs/<run-id>/tickets.manifest.json` (agent `ticket-architect`): Epics, Stories, Tasks and Spikes, never Sub-tasks and never story points.
-
-What the Definition of Ready checks (`scripts/validate_tickets.py`, no model involved): schema, ids and labels, summary format (`[Area] Verb object`, at most 80 characters), no TODO or TBD, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events taken from the spec for user-facing Stories, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle and every `jira_key` null before publishing (after a live publish they hold the Jira keys).
-
-The preview: `scripts/preview_tickets.py` writes `tickets.preview.md` with totals, the ticket tree and the Must coverage table.
-
-Gate C: the human reads the preview and runs `/pm-approve tickets <run-id>`. It refuses unless the UX approval is valid and the Definition of Ready passes, and there is no override. Changing the manifest, the UX or the PRD afterwards makes the approval stale. Changing only a `jira_key` value does not.
-
-The dry run: after approval, `scripts/jira_publish.py runs/<run-id>` writes `tickets.dryrun.json`, the exact Jira payloads (epics first). Nothing can reach Jira in this version: the script imports no network library and refuses any `jira.mode` other than `dry_run`. Live publishing is M7 (next section).
-
-## Going live with Jira
-
-Not tested against a real Jira site. This version was proven against an in-memory fake Jira that mimics the Jira Cloud REST calls it uses. The first real publish must be run by a human on a test project.
-
-Setup:
-
-1. In `pm.config.yaml` set `jira.mode: publish`, `jira.site` (an `https://` URL, for example `https://yourcompany.atlassian.net`) and `jira.project_key`. Optionally set `jira.issue_types` to map ticket kinds to your Jira issue type names (default: Epic, Story, Task, and Spike becomes Task).
-2. Export your credentials in the shell: `JIRA_EMAIL` and `JIRA_API_TOKEN`. They are read only from the environment, never stored in the repo, never printed and never written to a log.
-3. Use a test project first.
-4. Run `/pm-publish <run-id>`. It checks the tickets approval, does a dry run, and then publishes. Claude Code shows a confirmation prompt that you must accept.
-
-Two keys are needed to publish: `jira.mode: publish` in the config and the `--publish` flag. With either one missing, the script refuses and explains why. Only `scripts/jira_publish.py` writes to Jira (over REST, standard library only); Jira MCP write tools stay blocked.
-
-What idempotent means here: every ticket carries a label `ext-<slug>-<id>`. Before creating a ticket the script searches Jira for that label. If it finds none, it creates the ticket. If it finds one, it updates it instead. So running a publish again never creates duplicates. If two Jira issues carry the same label, the script stops and names them.
-
-Resuming after a failure: epics are written first, then the other tickets in manifest order, and each Jira key is saved as soon as it exists. If a request fails, fix the cause and run `/pm-publish <run-id>` again. Keys already written are kept and the rerun only creates what is missing.
-
-What gets written back to the run: the Jira keys in `tickets.manifest.json`, `state.json` (`jira_keys`, and stage `done`), a log in `tickets.published.json`, and `traceability.md`. Changing only the keys does not make the tickets approval stale. `prd.md`, `ux/` and the approval files are not touched.
-
-Not done: issue links for `blocks` are not created (blocking tickets are listed in the description), and Jira issues removed from the manifest are not deleted.
-
-## Evidence plug-ins (M3 + M4: data and anecdotes)
+## Evidence plug-ins: data and anecdotes
 
 Numbers and quotes come from scripts, never from a model. Evidence cards (`runs/<id>/03-evidence/EV-###.json`) are written only by `scripts/enrich.py` from provider output. Anecdotes are copied unchanged from scrubbed candidates.
 
@@ -155,7 +134,7 @@ Commands (skills in `.claude/skills/`):
 
 - `/pm-enrich <run-id> [--registry path] [--config path]`: agent `data-enricher` asks 2 to 5 data questions per problem, picks library queries and runs `enrich.py`; then `validate_evidence.py` checks the cards. Stops with "no data provider configured" if none is enabled.
 - `/pm-anecdotes <run-id> [--keywords "a,b"]`: `anecdotes.py pull` writes `04-anecdotes.candidates.json`, agent `anecdote-curator` keeps 3 to 5 (with a counter-anecdote when one exists), `validate_anecdotes.py` checks them.
-- `/pm-prd` runs both in parallel when the registry has enabled providers.
+- `/pm-prd` and `/pm-run` run both in parallel when the registry has enabled providers.
 
 The `--claim` is a template, not a sentence with numbers. The script fills `{value}` (the provider value), `{value_pct}` (value x 100, written as `{value_pct}%` or `{value_pct} percent`, only for fractions 0 to 1) and `{n}` from the provider output, and refuses a template with its own digits, unknown placeholders or a magnitude word (k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a number. `validate_evidence.py` re-checks every number in a claim with the same rules, and checks that `query_hash` is the sha256 of the library `.sql` file text and that `source` is the query's provider. Parameter names, formats, allowed values and a working `example` for each library query are in `connectors/queries/index.yaml`.
 
@@ -273,22 +252,57 @@ PRD rule: any quoted passage of 4 or more words in section 6b must appear in an 
    .venv/bin/python scripts/validate_evidence.py runs/<run-id>
    ```
 
-## Key Files
+## Going live with Jira
 
-- `CLAUDE.md`: Principles and repo layout.
-- `decisions.md`: Local decision log. `scripts/approve.py` appends every approval to it. It is created on first use and is not committed.
-- `pm.config.yaml`: Configuration and model tier mapping.
-- `connectors/registry.yaml`: Registry of data sources.
-- `schemas/`: JSON Schema validators.
-- `scripts/`: Intake, AI gates logic, validators.
-- `fixtures/`: Synthetic meeting notes with golden outputs.
+Not tested against a real Jira site. The publish path was proven against an in-memory fake Jira that mimics the Jira Cloud REST calls it uses. The first real publish must be run by a human on a test project.
 
-## Architecture
+Setup:
 
-The workflow operates in 3 stages:
+1. In `pm.config.yaml` set `jira.mode: publish`, `jira.site` (an `https://` URL, for example `https://yourcompany.atlassian.net`) and `jira.project_key`. Optionally set `jira.issue_types` to map ticket kinds to your Jira issue type names (default: Epic, Story, Task, and Spike becomes Task).
+2. Export your credentials in the shell: `JIRA_EMAIL` and `JIRA_API_TOKEN`. They are read only from the environment, never stored in the repo, never printed and never written to a log.
+3. Use a test project first.
+4. Run `/pm-publish <run-id>`. It checks the tickets approval, does a dry run, and then publishes. Claude Code shows a confirmation prompt that you must accept.
 
-1. **Stage 1** (Extraction): Meeting notes → structured problem statement.
-2. **Stage 2** (PRD + UX): Problem → audited PRD and UX screens.
-3. **Stage 3** (Jira): Screens → Jira tickets (dry-run or publish).
+Two keys are needed to publish: `jira.mode: publish` in the config and the `--publish` flag. With either one missing, the script refuses and explains why. Only `scripts/jira_publish.py` writes to Jira (over REST, standard library only); Jira MCP write tools stay blocked.
 
-Each stage has a budget, gates, and approval checkpoints.
+What idempotent means here: every ticket carries a label `ext-<slug>-<id>`. Before creating a ticket the script searches Jira for that label. If it finds none, it creates the ticket. If it finds one, it updates it instead. So running a publish again never creates duplicates. If two Jira issues carry the same label, the script stops and names them.
+
+Resuming after a failure: epics are written first, then the other tickets in manifest order, and each Jira key is saved as soon as it exists. If a request fails, fix the cause and run `/pm-publish <run-id>` again. Keys already written are kept and the rerun only creates what is missing.
+
+What gets written back to the run: the Jira keys in `tickets.manifest.json`, `state.json` (`jira_keys`, and stage `done`), a log in `tickets.published.json`, and `traceability.md`. Changing only the keys does not make the tickets approval stale. `prd.md`, `ux/` and the approval files are not touched.
+
+Not done: issue links for `blocks` are not created (blocking tickets are listed in the description), and Jira issues removed from the manifest are not deleted.
+
+## Evaluation and fixtures
+
+`make eval` (`scripts/eval_fixtures.py`) builds a temporary run for every folder under `fixtures/` that has `notes.md` and `expected.yaml`. It copies the golden outputs, runs every validator whose input exists, computes the PRD or memo decision and the audit verdicts, and compares them with `expected.yaml`. It prints one row per fixture and `EVAL: <n> fixtures, <m> failed`, and exits 1 if any check fails. Fixtures are synthetic.
+
+| Fixture | What it proves |
+|---------|----------------|
+| `clean-meeting` | The happy path: clear notes, one validated problem, a PRD that passes with risk. |
+| `clean-meeting-evidence` | A PRD that cites script-produced evidence cards and anecdotes, with every number and quote tracing. |
+| `ai-clear-fit` | A justified AI feature: the AI gates pass and the PRD carries the AI addendum. |
+| `messy-transcript` | Several problems in noisy notes: one primary problem, the others parked. |
+| `contradictory-decisions` | Disagreements in the notes: open questions are raised, and the PRD audit FAILs. |
+| `solution-first-chatbot` | Notes that start from a solution: it is reframed as an unvalidated problem, and the outcome is a no-PRD memo. |
+| `thin-evidence` | A problem with little evidence: the default outcome is a memo, and the PRD written anyway FAILs its audit. |
+
+`fixtures/bad-prd/` is a deliberately broken PRD that the validator must reject.
+
+## Limits
+
+- No screenshots. The UX auditor reads the HTML, and scripts check the facts.
+- Never run against a real Jira. The publish path was only proven against an in-memory fake. The first live publish must be a human run on a test project.
+- Cost is an estimate from transcripts and example prices, not a bill, and it leaves out the main session.
+- The checkers judge form, not substance. They confirm that numbers trace, citations exist and sections are complete. They cannot tell whether the PRD is a good idea, so the human gates matter.
+- The mock warehouse and anecdote data are synthetic.
+
+## Key files
+
+- `CLAUDE.md`: principles and repo layout.
+- `decisions.md`: local decision log. `scripts/approve.py` appends every approval to it. It is created on first use and is not committed.
+- `pm.config.yaml`: configuration, model tiers, budgets and example prices.
+- `connectors/registry.yaml`: registry of data sources (all disabled).
+- `schemas/`: JSON Schemas for the handoff files.
+- `scripts/`: intake, validators, verdicts, approvals, cost, status and publishing.
+- `fixtures/`: synthetic meeting notes with golden outputs.

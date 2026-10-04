@@ -1,0 +1,19 @@
+{
+  "id": "EV-003",
+  "claim": "Enterprise accounts take a median of 74 minutes to confirm a meeting (n=142)",
+  "claim_template": "Enterprise accounts take a median of {value} minutes to confirm a meeting (n={n})",
+  "metric": "median_minutes_to_confirm",
+  "value": 74.0,
+  "segment": "enterprise",
+  "period": "all",
+  "n": 142,
+  "source": "mock_warehouse",
+  "query_id": "median_minutes_to_confirm",
+  "query_hash": "9874b2d80c96513b7e784130fb12bb4a9db99d176028a27db79a5013f45ebb26",
+  "run_at": "2026-10-04T07:26:21.051552+00:00",
+  "confidence": "high",
+  "caveats": [
+    "synthetic mock warehouse data"
+  ],
+  "supports_problem": "PB-1"
+}

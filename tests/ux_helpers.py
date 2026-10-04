@@ -14,7 +14,7 @@ from typing import List
 
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
-from validate_prd import parse_requirements  # noqa: E402
+from validate_prd import parse_requirements
 
 TOKENS = (REPO_ROOT / "templates" / "ux-tokens.css").read_text(encoding="utf-8").strip()
 BASE_STATES = ["default", "loading", "empty", "error", "success"]

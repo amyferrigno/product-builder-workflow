@@ -10,12 +10,12 @@ REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from cost_helpers import make_project, make_run, write_log  # noqa: E402
-from status import next_step, status_text  # noqa: E402
-from tickets_hash import tickets_hash  # noqa: E402
-from tickets_helpers import make_tickets_run  # noqa: E402
-from ux_gate_helpers import sha  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
+from cost_helpers import make_project, make_run, write_log
+from status import next_step, status_text
+from tickets_hash import tickets_hash
+from tickets_helpers import make_tickets_run
+from ux_gate_helpers import sha
+from ux_hash import ux_hash
 
 STATUS_SCRIPT = REPO_ROOT / "scripts" / "status.py"
 

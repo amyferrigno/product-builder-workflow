@@ -283,7 +283,8 @@ def ux_gate_summary(run_dir: str) -> None:
         lines.append(f"Next step: Approve with /pm-approve ux {run_id} or send change requests")
     elif verdict == "FAIL":
         lines.append(
-            f"Next step: verdict is FAIL; fix the screens above, or approve with /pm-approve ux {run_id} and an explicit override reason"
+            f"Next step: verdict is FAIL; fix the screens above, or approve with /pm-approve ux {run_id} "
+            "and an explicit override reason"
         )
     else:
         lines.append("Next step: run the audit first")
@@ -438,7 +439,9 @@ def gate_summary(run_dir: str, artifact: str) -> None:
     if verdict in ("PASS", "PASS_WITH_RISK"):
         lines.append(f"Next step: Approve with /pm-approve prd {run_id} or send change requests")
     elif verdict == "FAIL":
-        lines.append("Next step: verdict is FAIL; revise the flagged sections, or approve with an explicit override reason")
+        lines.append(
+            "Next step: verdict is FAIL; revise the flagged sections, or approve with an explicit override reason"
+        )
     else:
         lines.append("Next step: run the audit first")
     lines.append("=" * 60)

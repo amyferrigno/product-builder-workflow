@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent))
-from ux_verdict import compute_ux_verdict, load_ux_rubric  # noqa: E402
+from ux_verdict import compute_ux_verdict, load_ux_rubric
 
 RUBRIC = load_ux_rubric()
 HASH = "abc"

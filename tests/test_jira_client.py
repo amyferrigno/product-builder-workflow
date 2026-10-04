@@ -10,8 +10,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent))
-from fake_jira import FakeJira  # noqa: E402
-from jira_client import JiraClient, JiraError, to_adf  # noqa: E402
+from fake_jira import FakeJira
+from jira_client import JiraClient, JiraError, to_adf
 
 SITE = "https://example.atlassian.net"
 EMAIL = "someone@example.com"

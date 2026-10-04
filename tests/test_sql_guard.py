@@ -149,12 +149,18 @@ def test_bracket_inside_string_or_comment_is_allowed():
 
 
 def test_backtick_identifier_with_quote_cannot_hide_keywords():
-    sql = "WITH t AS (SELECT COUNT(*) AS `a'` FROM accounts) DELETE FROM accounts WHERE 1 IN (SELECT `a'` FROM t) OR 1=1"
+    sql = (
+        "WITH t AS (SELECT COUNT(*) AS `a'` FROM accounts) "
+        "DELETE FROM accounts WHERE 1 IN (SELECT `a'` FROM t) OR 1=1"
+    )
     assert "forbidden keyword: DELETE" in guard(sql)
 
 
 def test_double_quote_identifier_with_quote_cannot_hide_keywords():
-    sql = 'WITH t AS (SELECT COUNT(*) AS "a\'" FROM accounts) DELETE FROM accounts WHERE 1 IN (SELECT "a\'" FROM t) OR 1=1'
+    sql = (
+        'WITH t AS (SELECT COUNT(*) AS "a\'" FROM accounts) '
+        'DELETE FROM accounts WHERE 1 IN (SELECT "a\'" FROM t) OR 1=1'
+    )
     assert "forbidden keyword: DELETE" in guard(sql)
 
 
@@ -221,7 +227,7 @@ def test_limit_offset_forms():
     assert guard(f"{base} LIMIT 10 OFFSET 5") == []
     assert guard(f"{base} LIMIT 10 OFFSET 5;") == []
     assert "LIMIT 501 exceeds max_rows 500" in guard(f"{base} LIMIT 501 OFFSET 5")
-    assert guard(f"SELECT COUNT(*) FROM (SELECT segment FROM accounts LIMIT 10) UNION SELECT 1") == []
+    assert guard("SELECT COUNT(*) FROM (SELECT segment FROM accounts LIMIT 10) UNION SELECT 1") == []
 
 
 @pytest.mark.parametrize("sql", ["", "   ", ";", "-- only a comment"])

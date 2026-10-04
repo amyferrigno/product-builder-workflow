@@ -9,8 +9,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import cost_meter  # noqa: E402
-from cost_helpers import (  # noqa: E402
+import cost_meter
+from cost_helpers import (
     REPO_ROOT, TRANSCRIPTS, make_project, make_run, read_log, run_meter, write_log,
 )
 
@@ -141,7 +141,9 @@ def test_summarise_per_stage_with_unparsed(tmp_path):
     run = make_run(make_project(tmp_path))
     write_log(run, [_entry("stage1", 1.5), _entry("stage1", 0.5), _entry("stage1", None), _entry("stage2", 1.0)])
     summary = cost_meter.summarise(run, CONFIG)
-    assert summary["stage1"] == {"spent_usd": 2.0, "budget_usd": 3.0, "percent": pytest.approx(66.666667), "unparsed": 1}
+    assert summary["stage1"] == {
+        "spent_usd": 2.0, "budget_usd": 3.0, "percent": pytest.approx(66.666667), "unparsed": 1,
+    }
     assert summary["stage2"]["spent_usd"] == 1.0
     assert summary["stage2"]["percent"] == pytest.approx(50.0)
     assert summary["stage3"] == {"spent_usd": 0.0, "budget_usd": 1.0, "percent": 0.0, "unparsed": 0}
@@ -290,7 +292,10 @@ def test_transcript_counts_only_assistant_messages(tmp_path):
 def test_transcript_skips_message_with_damaged_token_values(tmp_path, bad):
     path = tmp_path / "t.jsonl"
     good = {"input_tokens": 10, "output_tokens": 5}
-    _write_transcript(path, [_msg("assistant", good, "a"), _msg("assistant", {"input_tokens": bad, "output_tokens": 99}, "b")])
+    _write_transcript(
+        path,
+        [_msg("assistant", good, "a"), _msg("assistant", {"input_tokens": bad, "output_tokens": 99}, "b")],
+    )
     tokens = cost_meter.parse_transcript(str(path))["tokens"]
     assert tokens["input"] == 10 and tokens["output"] == 5
 

@@ -13,10 +13,10 @@ from typing import Any, Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import active_run  # noqa: E402
-import check_approval  # noqa: E402
-import cost_meter  # noqa: E402
-import validate_memo  # noqa: E402
+import active_run
+import check_approval
+import cost_meter
+import validate_memo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -88,7 +88,10 @@ def _cost_lines(run_path: Path) -> List[str]:
     lines = []
     for stage, info in summary.items():
         pct = "n/a" if info["percent"] is None else f"{info['percent']:.1f}%"
-        line = f"  {stage}: spent {cost_meter._fmt_money(info['spent_usd'])} of {cost_meter._fmt_money(info['budget_usd'])} ({pct})"
+        line = (
+            f"  {stage}: spent {cost_meter._fmt_money(info['spent_usd'])} "
+            f"of {cost_meter._fmt_money(info['budget_usd'])} ({pct})"
+        )
         if info["unparsed"]:
             line += f", {info['unparsed']} unparsed"
         lines.append(line)

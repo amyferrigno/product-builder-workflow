@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import active_run  # noqa: E402
+import active_run
 
 REPO_ROOT = Path(__file__).parent.parent
 

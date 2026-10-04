@@ -1,4 +1,4 @@
-.PHONY: setup test eval
+.PHONY: setup test eval lint
 
 setup:
 	python3 -m venv .venv
@@ -10,3 +10,6 @@ test:
 
 eval:
 	./.venv/bin/python scripts/eval_fixtures.py
+
+lint:
+	./.venv/bin/ruff check .

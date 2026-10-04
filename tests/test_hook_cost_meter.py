@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cost_helpers import REPO_ROOT, TRANSCRIPTS, make_project, make_run, read_log, write_log  # noqa: E402
+from cost_helpers import REPO_ROOT, TRANSCRIPTS, make_project, make_run, read_log, write_log
 
 HOOK = REPO_ROOT / ".claude" / "hooks" / "cost_meter_hook.py"
 

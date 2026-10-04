@@ -10,8 +10,8 @@ from typing import Dict, Optional
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent))
-from ux_hash import ux_hash  # noqa: E402
-from ux_helpers import make_ux_run  # noqa: E402
+from ux_hash import ux_hash
+from ux_helpers import make_ux_run
 
 BASE_DIMS = ["req_coverage", "required_states", "accessibility", "token_consistency", "copy_clarity"]
 AI_DIMS = ["ai_trust_control_recovery"]

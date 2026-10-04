@@ -160,7 +160,8 @@ def assert_primary_problem_validation_status(expected: dict, fm: dict):
     problems = {p["id"]: p for p in fm.get("problems", [])}
     assert primary_id in problems, f"primary_problem {primary_id} not in problems"
     assert problems[primary_id]["validation_status"] == expected["primary_problem_validation_status"], \
-        f"primary_problem validation_status mismatch: {problems[primary_id]['validation_status']} != {expected['primary_problem_validation_status']}"
+        (f"primary_problem validation_status mismatch: {problems[primary_id]['validation_status']} "
+         f"!= {expected['primary_problem_validation_status']}")
 
 
 def assert_parked_problem_count(expected: dict, fm: dict):

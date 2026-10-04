@@ -84,8 +84,10 @@ Users will see available time slots automatically.
 
 | REQ-ID | Description | Priority | Acceptance criteria |
 |--------|-------------|----------|---------------------|
-| REQ-001 | Show available times | Must | Given a customer, When they open the scheduler, Then they see available slots (MET-001) |
-| REQ-002 | Support Google Calendar | Should | Given a user with Google Calendar, When they authenticate, Then their calendar loads (P-1) |
+| REQ-001 | Show available times | Must | Given a customer, When they open the scheduler, \
+Then they see available slots (MET-001) |
+| REQ-002 | Support Google Calendar | Should | Given a user with Google Calendar, When they authenticate, \
+Then their calendar loads (P-1) |
 | REQ-003 | Mobile support | Could | Given a mobile user, When they access the app, Then the UI is responsive |
 
 ## 13. MVP scope
@@ -357,7 +359,9 @@ def test_validate_prd_fails_missing_heading():
 def test_validate_prd_fails_headings_out_of_order():
     """Test that out-of-order headings are detected."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        prd = VALID_PRD_BASE.replace("## 4. Why now", "## 5. Why now").replace("## 5. Target users", "## 4. Target users")
+        prd = VALID_PRD_BASE.replace("## 4. Why now", "## 5. Why now").replace(
+            "## 5. Target users", "## 4. Target users"
+        )
         run_dir = create_test_run(
             tmpdir,
             "2026-10-03-test",
@@ -520,7 +524,8 @@ def test_validate_prd_fails_requirement_missing_given_when_then():
     """Test that requirement without Given/When/Then fails."""
     with tempfile.TemporaryDirectory() as tmpdir:
         prd = VALID_PRD_BASE.replace(
-            "| REQ-001 | Show available times | Must | Given a customer, When they open the scheduler, Then they see available slots (MET-001) |",
+            "| REQ-001 | Show available times | Must | Given a customer, When they open the scheduler, "
+            "Then they see available slots (MET-001) |",
             "| REQ-001 | Show available times | Must | No acceptance criteria |"
         )
         run_dir = create_test_run(
@@ -939,7 +944,9 @@ def _validate_variant(prd: str, extraction: dict = None, card_value: int = 2) ->
 
 
 def _with_extra_section_2(line: str) -> str:
-    return VALID_PRD_BASE.replace("Summary of the PRD in one paragraph.", f"Summary of the PRD in one paragraph. {line}")
+    return VALID_PRD_BASE.replace(
+        "Summary of the PRD in one paragraph.", f"Summary of the PRD in one paragraph. {line}"
+    )
 
 
 def test_citation_group_second_id_unknown_fails():
@@ -1025,7 +1032,9 @@ def test_range_with_both_ends_supported_passes():
 
 def test_thousands_separator_and_plus_normalised():
     extraction = make_extraction()
-    prd = VALID_PRD_BASE.replace("5000 requests", "5,000 requests").replace("and 2% fail.", "and 2% fail. Over 5000+ users.")
+    prd = VALID_PRD_BASE.replace("5000 requests", "5,000 requests").replace(
+        "and 2% fail.", "and 2% fail. Over 5000+ users."
+    )
     code, stdout, _ = _validate_variant(prd, extraction)
     assert code == 0, stdout
 
@@ -1040,7 +1049,10 @@ def test_iso_dates_and_ordered_list_markers_not_traced():
 
 
 # --- Requirement rows cannot skip the acceptance check ---
-ROW_REQ_003 = "| REQ-003 | Mobile support | Could | Given a mobile user, When they access the app, Then the UI is responsive |"
+ROW_REQ_003 = (
+    "| REQ-003 | Mobile support | Could | Given a mobile user, When they access the app, "
+    "Then the UI is responsive |"
+)
 
 
 def test_requirement_row_with_too_few_cells_fails():
@@ -1139,7 +1151,9 @@ def test_6b_short_quoted_phrase_is_ignored():
 
 
 def test_quote_outside_section_6b_is_not_checked():
-    prd = VALID_PRD_BASE.replace("Strategic context and timing.", 'Strategic context and "a long invented phrase here".')
+    prd = VALID_PRD_BASE.replace(
+        "Strategic context and timing.", 'Strategic context and "a long invented phrase here".'
+    )
     code, stdout, _ = _validate_variant(prd)
     assert code == 0, stdout
 
@@ -1243,7 +1257,9 @@ def _validate_with_two_anecdotes(prd: str, extraction: dict = None) -> tuple:
 
 
 def test_6b_quote_with_right_citation_passes():
-    prd = _with_6b_text(f'Admin said "{REAL_QUOTE}" (AN-001) and another said "Billing reminders arrive far too late" (AN-002).')
+    prd = _with_6b_text(
+        f'Admin said "{REAL_QUOTE}" (AN-001) and another said "Billing reminders arrive far too late" (AN-002).'
+    )
     code, stdout, _ = _validate_with_two_anecdotes(prd)
     assert code == 0, stdout
 

@@ -16,13 +16,13 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import prd_has_ai_addendum  # noqa: E402
-from validate_prd import (  # noqa: E402
+from audit_verdict import prd_has_ai_addendum
+from validate_prd import (
     extract_problem_ids,
     parse_problem_md_front_matter,
     parse_requirements,
 )
-from validate_ux import spec_screen_events  # noqa: E402
+from validate_ux import spec_screen_events
 
 try:
     from jsonschema import Draft202012Validator

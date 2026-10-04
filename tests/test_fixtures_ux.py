@@ -10,9 +10,9 @@ from jsonschema import Draft202012Validator
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
-from ux_hash import ux_hash  # noqa: E402
-from validate_prd import parse_requirements  # noqa: E402
-from validate_ux import validate_ux  # noqa: E402
+from ux_hash import ux_hash
+from validate_prd import parse_requirements
+from validate_ux import validate_ux
 
 GOLDEN = REPO / "fixtures" / "ai-clear-fit" / "golden"
 STATES = [

@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import StaleAuditError, prd_has_ai_addendum  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
-from validate_ux import validate_ux  # noqa: E402
+from audit_verdict import StaleAuditError, prd_has_ai_addendum
+from ux_hash import ux_hash
+from validate_ux import validate_ux
 
 try:
     import yaml

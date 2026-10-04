@@ -9,7 +9,7 @@ import hashlib
 
 # Import the function directly for unit tests
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-from audit_verdict import compute_verdict, load_rubric, find_repo_root, prd_has_ai_addendum
+from audit_verdict import compute_verdict, load_rubric, prd_has_ai_addendum
 
 
 def load_test_rubric():

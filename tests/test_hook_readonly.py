@@ -62,7 +62,9 @@ def test_blocks_mcp_query_and_statement_fields():
 def test_allows_select_aggregate_in_bash_and_mcp():
     code, _, stderr = run_hook(bash('x --sql "SELECT COUNT(*) FROM accounts"'))
     assert code == 0 and stderr == ""
-    code, _, stderr = run_hook({"tool_name": "mcp__w__q", "tool_input": {"sql": "SELECT segment, COUNT(*) FROM accounts GROUP BY segment"}})
+    code, _, stderr = run_hook(
+        {"tool_name": "mcp__w__q", "tool_input": {"sql": "SELECT segment, COUNT(*) FROM accounts GROUP BY segment"}}
+    )
     assert code == 0 and stderr == ""
 
 
@@ -93,7 +95,9 @@ def test_pii_rules_come_from_project_config_inline_list(tmp_path):
     (tmp_path / "pm.config.yaml").write_text("data:\n  max_rows_returned: 50\n  pii_tables: [customers, staff]\n")
     code, _, stderr = run_hook(bash('x --sql "SELECT * FROM customers"'), project_dir=tmp_path)
     assert code == 2 and "SELECT * is not allowed on PII table 'customers'" in stderr
-    code, _, stderr = run_hook(bash('x --sql "SELECT segment FROM accounts GROUP BY segment LIMIT 100"'), project_dir=tmp_path)
+    code, _, stderr = run_hook(
+        bash('x --sql "SELECT segment FROM accounts GROUP BY segment LIMIT 100"'), project_dir=tmp_path
+    )
     assert code == 2 and "LIMIT 100 exceeds max_rows 50" in stderr
 
 
@@ -117,7 +121,9 @@ def test_hook_agrees_with_guard_on_repo_config():
 
 
 def test_mcp_plain_text_query_is_allowed():
-    code, _, stderr = run_hook({"tool_name": "mcp__search__find", "tool_input": {"query": "customer scheduling complaints"}})
+    code, _, stderr = run_hook(
+        {"tool_name": "mcp__search__find", "tool_input": {"query": "customer scheduling complaints"}}
+    )
     assert code == 0 and stderr == ""
 
 
@@ -141,7 +147,12 @@ def mcp(tool_input):
 
 
 def test_mcp_plain_text_starting_with_sql_word_is_allowed():
-    for text in ("Update on scheduling complaints", "Select the best themes", "Drop in customer comments", "Delete requests from users"):
+    for text in (
+        "Update on scheduling complaints",
+        "Select the best themes",
+        "Drop in customer comments",
+        "Delete requests from users",
+    ):
         code, _, stderr = run_hook(mcp({"query": text}))
         assert code == 0 and stderr == "", text
 

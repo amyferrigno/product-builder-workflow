@@ -9,7 +9,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import pii  # noqa: E402
+import pii
 
 REPO = Path(__file__).parent.parent
 PROVIDER = REPO / "connectors" / "providers" / "mock_anecdotes.py"
@@ -129,7 +129,10 @@ def test_fixture_fields_and_value_sets():
     recs = records()
     assert 20 <= len(recs) <= 30
     for r in recs:
-        assert set(r) == {"source", "source_ref", "date", "segment", "persona", "pain", "quote", "sentiment", "consent_ok", "keywords"}
+        assert set(r) == {
+            "source", "source_ref", "date", "segment", "persona", "pain", "quote", "sentiment", "consent_ok",
+            "keywords",
+        }
         assert r["source"] in SOURCES and r["segment"] in SEGMENTS
         assert -2 <= r["sentiment"] <= 2 and isinstance(r["consent_ok"], bool)
         assert isinstance(r["keywords"], list) and r["keywords"]

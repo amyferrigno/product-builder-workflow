@@ -9,16 +9,16 @@ import json
 import hashlib
 import argparse
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import verdict_for_run  # noqa: E402
-from check_approval import approval_status  # noqa: E402
-from traceability import write_traceability  # noqa: E402
-from tickets_hash import tickets_hash  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
-from ux_verdict import ux_verdict_for_run  # noqa: E402
-from validate_tickets import validate_tickets  # noqa: E402
+from audit_verdict import verdict_for_run
+from check_approval import approval_status
+from traceability import write_traceability
+from tickets_hash import tickets_hash
+from ux_hash import ux_hash
+from ux_verdict import ux_verdict_for_run
+from validate_tickets import validate_tickets
 
 try:
     from jsonschema import Draft202012Validator
@@ -45,7 +45,7 @@ def load_state(run_dir: str) -> dict:
     except FileNotFoundError:
         raise ValueError(f"state.json not found in {run_dir}")
     except json.JSONDecodeError:
-        raise ValueError(f"Invalid JSON in state.json")
+        raise ValueError("Invalid JSON in state.json")
 
 
 def load_schema(schema_name: str, repo_root: Path) -> dict:
@@ -130,7 +130,7 @@ def approve_prd(
         "sha256": current_hash,
         "verdict": verdict,
         "override_reason": override_reason,
-        "approved_at": datetime.utcnow().isoformat() + "Z"
+        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
     }
 
     # Build and validate the updated state first
@@ -139,7 +139,7 @@ def approve_prd(
     except (KeyError, TypeError):
         raise ValueError("state.json is malformed: missing approval_hashes")
     state["status"] = "approved"
-    state["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    state["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
     schema = load_schema("state", repo_root)
     validator = Draft202012Validator(schema)
@@ -174,12 +174,12 @@ def approve_prd(
     run_id = state.get("run_id", "unknown")
     entry_lines = [
         "",
-        f"## {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} - PRD Approval",
+        f"## {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} - PRD Approval",
         "",
-        f"**Decided by**: Product Owner",
-        f"",
+        "**Decided by**: Product Owner",
+        "",
         f"**Run**: {run_id}",
-        f"",
+        "",
         f"**Verdict**: {verdict}",
     ]
 
@@ -189,7 +189,7 @@ def approve_prd(
         else:
             entry_lines.append(f"**Override reason**: {override_reason}")
     elif verdict == "PASS_WITH_RISK":
-        entry_lines.append(f"**Decision**: Risk accepted.")
+        entry_lines.append("**Decision**: Risk accepted.")
 
     entry_lines.append("")
 
@@ -248,7 +248,7 @@ def approve_ux(
         "prd_sha256": prd_hash,
         "verdict": verdict,
         "override_reason": override_reason,
-        "approved_at": datetime.utcnow().isoformat() + "Z"
+        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
     }
 
     try:
@@ -256,7 +256,7 @@ def approve_ux(
     except (KeyError, TypeError):
         raise ValueError("state.json is malformed: missing approval_hashes")
     state["status"] = "approved"
-    state["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    state["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
     schema = load_schema("state", repo_root)
     if list(Draft202012Validator(schema).iter_errors(state)):
@@ -286,7 +286,7 @@ def approve_ux(
     decisions_path = repo_root / "decisions.md" if decisions_file is None else Path(decisions_file)
     entry_lines = [
         "",
-        f"## {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} - UX Approval",
+        f"## {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} - UX Approval",
         "",
         "**Decided by**: Product Owner",
         "",
@@ -356,7 +356,7 @@ def approve_tickets(
         "prd_sha256": prd_hash,
         "ux_sha256": ux_current,
         "ticket_count": ticket_count,
-        "approved_at": datetime.utcnow().isoformat() + "Z"
+        "approved_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
     }
 
     try:
@@ -365,7 +365,7 @@ def approve_tickets(
         raise ValueError("state.json is malformed: missing approval_hashes")
     state["stage"] = "stage3"
     state["status"] = "approved"
-    state["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    state["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
     schema = load_schema("state", repo_root)
     if list(Draft202012Validator(schema).iter_errors(state)):
@@ -395,7 +395,7 @@ def approve_tickets(
     decisions_path = repo_root / "decisions.md" if decisions_file is None else Path(decisions_file)
     entry_lines = [
         "",
-        f"## {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} - Tickets Approval",
+        f"## {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} - Tickets Approval",
         "",
         "**Decided by**: Product Owner",
         "",

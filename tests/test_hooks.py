@@ -121,7 +121,7 @@ def test_guard_approvals_bash_tool_without_filepath():
 
     code, stdout, stderr = run_hook_script(hook_script, tool_call)
 
-    assert code == 0, f"Should allow non-file tools"
+    assert code == 0, "Should allow non-file tools"
 
 
 def test_validate_artifact_exits_0_for_unrelated_file():
@@ -137,7 +137,7 @@ def test_validate_artifact_exits_0_for_unrelated_file():
 
     code, stdout, stderr = run_hook_script(hook_script, tool_call)
 
-    assert code == 0, f"Should allow non-PRD files"
+    assert code == 0, "Should allow non-PRD files"
 
 
 def test_validate_artifact_exits_0_if_no_validate_script():
@@ -167,7 +167,7 @@ def test_validate_artifact_exits_0_if_no_validate_script():
         )
 
         # Should exit 0 if script doesn't exist
-        assert result.returncode == 0, f"Should exit 0 if validate script doesn't exist"
+        assert result.returncode == 0, "Should exit 0 if validate script doesn't exist"
 
 
 def test_validate_artifact_runs_validation():
@@ -208,7 +208,7 @@ def test_validate_artifact_runs_validation():
             cwd=Path(__file__).parent.parent
         )
 
-        assert result.returncode == 0, f"Validation passed, should exit 0"
+        assert result.returncode == 0, "Validation passed, should exit 0"
 
 
 def test_validate_artifact_blocks_on_validation_failure():
@@ -480,7 +480,9 @@ def _spec_hook_result(spec_text: str) -> subprocess.CompletedProcess:
     with tempfile.TemporaryDirectory() as tmpdir:
         run_dir = Path(tmpdir) / "runs" / "test"
         shutil.copytree(Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "ux", run_dir / "ux")
-        shutil.copy(Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "prd.md", run_dir / "prd.md")
+        shutil.copy(
+            Path(__file__).parent.parent / "fixtures" / "ai-clear-fit" / "golden" / "prd.md", run_dir / "prd.md"
+        )
         (run_dir / "ux" / "spec.md").write_text(spec_text, encoding="utf-8")
         tool_call = {"tool_name": "Write", "tool_input": {"file_path": str(run_dir / "ux" / "spec.md")}}
         return subprocess.run(

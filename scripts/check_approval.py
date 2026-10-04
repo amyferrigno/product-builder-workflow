@@ -192,7 +192,7 @@ def main():
     try:
         check_approval(run_dir, artifact)
     except Exception:
-        print(f"invalid: unexpected error", file=sys.stderr)
+        print("invalid: unexpected error", file=sys.stderr)
         sys.exit(1)
 
 

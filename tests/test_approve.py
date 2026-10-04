@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from ux_gate_helpers import approve_prd_file, audited_run, build_audit, make_gate_run, render, sha, ux_hash, write_audit  # noqa: E402
+from ux_gate_helpers import approve_prd_file, audited_run, build_audit, make_gate_run, render, sha, ux_hash, write_audit
 
 
 def run_approve(
@@ -192,7 +192,7 @@ def test_approve_fail_refuses():
 
         code, stdout, stderr = run_approve(run_dir)
 
-        assert code == 1, f"Should have failed but didn't"
+        assert code == 1, "Should have failed but didn't"
         assert "Traceback" not in stderr, f"Traceback in stderr: {stderr}"
 
 
@@ -203,7 +203,7 @@ def test_approve_null_verdict_refuses():
 
         code, stdout, stderr = run_approve(run_dir)
 
-        assert code == 1, f"Should have failed but didn't"
+        assert code == 1, "Should have failed but didn't"
         assert "Traceback" not in stderr
 
 
@@ -240,7 +240,7 @@ def test_approve_empty_override_reason_refuses():
             override_reason=""
         )
 
-        assert code == 1, f"Should have failed but didn't"
+        assert code == 1, "Should have failed but didn't"
         assert "Traceback" not in stderr
 
 
@@ -260,6 +260,24 @@ def test_approve_updates_state():
         assert state["status"] == "approved"
         assert state["approval_hashes"]["prd"] is not None
         assert "updated_at" in state
+
+
+def test_approve_timestamps_end_in_z_without_offset():
+    """Fresh approved_at and updated_at stay in the ...Z format, with no +00:00 offset."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_dir = create_test_run(tmpdir, verdict="PASS")
+        decisions_file = Path(tmpdir) / "decisions.md"
+        decisions_file.write_text("# Decisions\n\n")
+
+        code, stdout, stderr = run_approve(run_dir, decisions_file=str(decisions_file))
+        assert code == 0, f"Failed: {stderr}"
+
+        approval = json.loads((Path(run_dir) / "approvals" / "prd.approved").read_text())
+        state = json.loads((Path(run_dir) / "state.json").read_text())
+
+        for value in (approval["approved_at"], state["updated_at"]):
+            assert value.endswith("Z")
+            assert "+00:00" not in value
 
 
 def test_approve_state_validates():
@@ -791,8 +809,8 @@ def test_approval_status_function_matches_cli(tmp_path):
 # --- Gate C: approve tickets -------------------------------------------------
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tickets_helpers import approve_ux_file, make_tickets_run, valid_manifest, write_manifest  # noqa: E402
-from ux_gate_helpers import write_state  # noqa: E402
+from tickets_helpers import make_tickets_run, valid_manifest, write_manifest
+from ux_gate_helpers import write_state
 
 
 def tickets_run(tmp_path, ai=False):

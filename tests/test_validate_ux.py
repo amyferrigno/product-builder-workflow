@@ -45,7 +45,12 @@ def test_missing_required_state(tmp_path):
 
 def test_missing_ai_state_on_ai_prd(tmp_path):
     run = make_ux_run(tmp_path, ai=True)
-    edit(run, SCREEN1, '<section id="state-escalation" data-state="escalation"><p>Home: escalation state.</p></section>', "")
+    edit(
+        run,
+        SCREEN1,
+        '<section id="state-escalation" data-state="escalation"><p>Home: escalation state.</p></section>',
+        "",
+    )
     assert has(validate_ux(run), "missing state 'escalation'")
 
 
@@ -209,14 +214,16 @@ def test_button_without_text(tmp_path):
 def test_screen_missing_from_index(tmp_path):
     run = make_ux_run(tmp_path)
     path = run / "ux" / "index.html"
-    path.write_text("\n".join(l for l in path.read_text().split("\n") if "SCR-002" not in l))
+    path.write_text("\n".join(ln for ln in path.read_text().split("\n") if "SCR-002" not in ln))
     assert has(validate_ux(run), "index.html", "SCR-002")
 
 
 def test_state_link_missing_from_index(tmp_path):
     run = make_ux_run(tmp_path)
     path = run / "ux" / "index.html"
-    path.write_text("\n".join(l for l in path.read_text().split("\n") if "#state-empty" not in l or "SCR-001" not in l))
+    path.write_text(
+        "\n".join(ln for ln in path.read_text().split("\n") if "#state-empty" not in ln or "SCR-001" not in ln)
+    )
     assert has(validate_ux(run), "index.html", "state 'empty' of SCR-001")
 
 

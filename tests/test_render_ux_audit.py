@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from ux_gate_helpers import (  # noqa: E402
+from ux_gate_helpers import (
     build_audit, make_gate_run, render, sha, ux_hash, write_audit,
 )
 
@@ -69,7 +69,11 @@ def test_render_fail_lists_fixes_and_sets_failed(tmp_path):
 def test_render_validator_errors_force_fail_with_all_fours(tmp_path):
     run = make_gate_run(tmp_path)
     screen = run / "ux" / "screens" / "SCR-001-home.html"
-    screen.write_text(screen.read_text().replace('<section id="state-error" data-state="error">', '<section id="state-oops" data-state="oops">'))
+    screen.write_text(
+        screen.read_text().replace(
+            '<section id="state-error" data-state="error">', '<section id="state-oops" data-state="oops">'
+        )
+    )
     write_audit(run, build_audit(run, False))  # all 4s, hash taken after the edit
     result = render(run)
     assert result.returncode == 1

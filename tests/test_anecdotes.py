@@ -15,8 +15,8 @@ from jsonschema import Draft202012Validator
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import anecdotes  # noqa: E402
-from pii import scan  # noqa: E402
+import anecdotes
+from pii import scan
 
 MOCK_REGISTRY = str(REPO_ROOT / "fixtures" / "registry.mock.yaml")
 MOCK_CONFIG = str(REPO_ROOT / "fixtures" / "pm.config.mock.yaml")

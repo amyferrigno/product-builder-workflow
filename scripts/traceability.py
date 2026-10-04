@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from validate_prd import parse_requirements  # noqa: E402
-from validate_ux import spec_screen_reqs  # noqa: E402
+from validate_prd import parse_requirements
+from validate_ux import spec_screen_reqs
 
 JIRA_TEXT = "not yet created (Stage 3)"
 NO_SCREEN = "-"

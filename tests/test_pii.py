@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import pii  # noqa: E402
+import pii
 
 REPO = Path(__file__).parent.parent
 TICKETS = REPO / "fixtures" / "mock_anecdotes" / "tickets.json"
@@ -119,7 +119,9 @@ def test_email_look_alikes_not_flagged(text):
 
 # Typographic dashes and bare 10/11 digit phones
 
-@pytest.mark.parametrize("phone", ["555\u2013010\u20139999", "555\u2011010\u20119999", "555\u2212010\u22129999", "5550109999", "15550109999"])
+@pytest.mark.parametrize("phone", [
+    "555\u2013010\u20139999", "555\u2011010\u20119999", "555\u2212010\u22129999", "5550109999", "15550109999",
+])
 def test_typographic_dash_and_bare_phones_detected(phone):
     text = f"call {phone} now"
     assert pii.scan(text) == [{"type": "phone", "match": phone, "line": 1}]
@@ -188,7 +190,9 @@ def test_people_term_matches_across_line_break_and_extra_spaces():
     assert types("ask Jordan\n  Testperson", pii_terms=cfg) == ["term"]
 
 
-@pytest.mark.parametrize("suffixed", ["Northwind Example Ltd", "Northwind Example ltd.", "Northwind Example INC", "Northwind Example LLC"])
+@pytest.mark.parametrize("suffixed", [
+    "Northwind Example Ltd", "Northwind Example ltd.", "Northwind Example INC", "Northwind Example LLC",
+])
 def test_company_term_matches_with_and_without_legal_suffix(suffixed):
     cfg = {"people": [], "companies": ["Northwind Example Ltd"]}
     assert pii.scrub(f"at {suffixed} today", cfg) == "at [company] today"
@@ -232,7 +236,9 @@ def test_email_inside_url_userinfo_reported_once():
 
 def test_load_pii_config_reads_both_keys(tmp_path):
     cfg = tmp_path / "c.yaml"
-    cfg.write_text("anecdotes:\n  allow_company_names: true\n  pii_terms:\n    people: [Ann Example]\n    companies: [Acme Fake]\n")
+    cfg.write_text(
+        "anecdotes:\n  allow_company_names: true\n  pii_terms:\n    people: [Ann Example]\n    companies: [Acme Fake]\n"
+    )
     assert pii.load_pii_config(str(cfg)) == ({"people": ["Ann Example"], "companies": ["Acme Fake"]}, True)
 
 
@@ -283,7 +289,9 @@ def test_cli_scan_uses_config_terms(tmp_path):
     f = tmp_path / "d.txt"
     f.write_text("Jordan Testperson was here\n")
     cfg = tmp_path / "c.yaml"
-    cfg.write_text("anecdotes:\n  allow_company_names: false\n  pii_terms: { people: [Jordan Testperson], companies: [] }\n")
+    cfg.write_text(
+        "anecdotes:\n  allow_company_names: false\n  pii_terms: { people: [Jordan Testperson], companies: [] }\n"
+    )
     code, out, _ = run_cli("scan", f, "--config", cfg)
     assert code == 1
     assert out.strip() == f"{f}:1: term: Jordan Testperson"

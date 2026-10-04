@@ -83,6 +83,20 @@ def test_blocks_set_and_patch_writes(tmp_path):
         assert run_mcp(project, tool).returncode == 2, tool
 
 
+def test_blocks_read_prefixed_names_that_write(tmp_path):
+    project = make_project(tmp_path)
+    for tool in ("mcp__atlassian__getOrCreateJiraIssue", "mcp__jira__fetchAndUpdateIssue",
+                 "mcp__jira__list_and_delete", "mcp__jira__bulk_upsert", "mcp__jira__removeLabel"):
+        assert run_mcp(project, tool).returncode == 2, tool
+
+
+def test_allows_allowlisted_and_plain_read_tools(tmp_path):
+    project = make_project(tmp_path)
+    for tool in ("mcp__atlassian__getJiraIssue", "mcp__atlassian__getTransitionsForJiraIssue",
+                 "mcp__atlassian__getJiraIssueRemoteIssueLinks", "mcp__atlassian__searchJiraIssuesUsingJql"):
+        assert run_mcp(project, tool).returncode == 0, tool
+
+
 def test_blocks_mcp_write_when_config_missing(tmp_path):
     project = make_project(tmp_path, config=False)
     assert run_mcp(project, "mcp__atlassian__createJiraIssue").returncode == 2

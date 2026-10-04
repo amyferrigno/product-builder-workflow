@@ -16,6 +16,14 @@ make test     # Run pytest
 
 All tests must pass before merging. Schema validation is automatic.
 
+Tip: the suite takes about two minutes. On a laptop, run long test runs as `caffeinate -i make test` so the machine does not sleep and slow the run down.
+
+## Controls and early warnings
+
+The controls are the scripts. `approve.py` recomputes the verdict from the audit file at approval time (it does not trust `state.json`). `check_approval.py` checks that an approval still matches the current files. `jira_publish.py` re-checks the approval and the Definition of Ready before it does anything. The database authorizer enforces read-only, aggregate-only queries.
+
+The hooks in `.claude/hooks/` are early warnings: they stop the model early and explain why, but the scripts do not depend on them. Every approval command also triggers a confirmation prompt in Claude Code (the approvals hook answers "ask"), so a human accepts each approval.
+
 ## Milestones
 
 See [planning.md](planning.md) for the full roadmap and status.

@@ -52,3 +52,19 @@ def test_cli_missing_spec_is_clean_error(tmp_path):
     )
     assert result.returncode == 1
     assert "Traceback" not in result.stderr
+
+
+def test_jira_column_lists_tickets_when_manifest_exists(tmp_path):
+    from tickets_helpers import make_tickets_run
+    run = make_tickets_run(tmp_path)
+    text = build_traceability(run)
+    assert "not yet created (Stage 3)" not in text
+    assert "| REQ-001 | Must | SCR-001, SCR-002 | T-001 (not yet published) |" in text
+
+
+def test_jira_column_without_manifest_is_unchanged(tmp_path):
+    from tickets_helpers import make_tickets_run
+    run = make_tickets_run(tmp_path)
+    (run / "tickets.manifest.json").unlink()
+    text = build_traceability(run)
+    assert "| REQ-001 | Must | SCR-001, SCR-002 | not yet created (Stage 3) |" in text

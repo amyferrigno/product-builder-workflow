@@ -26,6 +26,17 @@
             "items": { "type": "string" }
           },
           "problem_ref": { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["feature", "measure_quality"],
+            "default": "feature"
+          },
+          "jira_key": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
           "children": {
             "type": "array",
             "items": {
@@ -75,7 +86,21 @@
                     { "type": "string" },
                     { "type": "null" }
                   ]
-                }
+                },
+                "user_facing": { "type": "boolean" },
+                "analytics_events": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "ai_quality_criteria": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "task_kind": {
+                  "type": "string",
+                  "enum": ["instrumentation", "eval", "data", "design_handoff", "other"]
+                },
+                "open_question_ref": { "type": "string" }
               }
             }
           }

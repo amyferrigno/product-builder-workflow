@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Check if an artifact is approved and hash matches.
-Usage: python scripts/check_approval.py <run_dir> prd|ux
+Usage: python scripts/check_approval.py <run_dir> prd|ux|tickets
 Exit 0 and print 'approved' if approval exists and hash is current, else exit 1.
 """
 
@@ -31,6 +31,8 @@ def approval_status(run_dir: str, artifact: str) -> tuple:
 
     if artifact == "ux":
         return _ux_status(run_dir)
+    if artifact == "tickets":
+        return _tickets_status(run_dir)
     if artifact != "prd":
         return False, f"invalid: unknown artifact {artifact}"
 
@@ -116,6 +118,56 @@ def _ux_status(run_dir: str) -> tuple:
     return True, "approved"
 
 
+def _tickets_hash(run_dir: str) -> str:
+    """Tickets hash from scripts/tickets_hash.py, imported by path so this file works from any cwd."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from tickets_hash import tickets_hash
+    return tickets_hash(run_dir)
+
+
+def _tickets_status(run_dir: str) -> tuple:
+    run_path = Path(run_dir)
+    approval_path = run_path / "approvals" / "tickets.approved"
+
+    if not (run_path / "tickets.manifest.json").exists():
+        return False, "missing: tickets.manifest.json not found"
+    if not approval_path.exists():
+        return False, "missing: approval file not found"
+
+    try:
+        with open(approval_path, 'r') as f:
+            approval = json.load(f)
+    except (json.JSONDecodeError, IOError, ValueError):
+        return False, "invalid: cannot parse approval file"
+    if not isinstance(approval, dict) or "sha256" not in approval:
+        return False, "invalid: sha256 missing from approval file"
+    for key in ("prd_sha256", "ux_sha256"):
+        if key not in approval:
+            return False, f"invalid: {key} missing from approval file"
+
+    try:
+        current_tickets = _tickets_hash(run_dir)
+    except (ValueError, OSError) as e:
+        return False, f"invalid: {str(e)}"
+    if approval.get("sha256") != current_tickets:
+        return False, "stale: tickets have changed since approval"
+
+    ux_ok, ux_message = _ux_status(run_dir)
+    if not ux_ok:
+        return False, f"{ux_message.split(':')[0]}: UX approval is not valid ({ux_message})"
+    try:
+        current_ux = _ux_hash(run_dir)
+        current_prd = hash_file(str(run_path / "prd.md"))
+    except (ValueError, OSError) as e:
+        return False, f"invalid: {str(e)}"
+    if approval.get("ux_sha256") != current_ux:
+        return False, "stale: ux has changed since the tickets were approved"
+    if approval.get("prd_sha256") != current_prd:
+        return False, "stale: prd.md has changed since the tickets were approved"
+
+    return True, "approved"
+
+
 def check_approval(run_dir: str, artifact: str) -> None:
     """
     Check if an artifact approval is valid.
@@ -131,7 +183,7 @@ def check_approval(run_dir: str, artifact: str) -> None:
 def main():
     """Main entry point."""
     if len(sys.argv) != 3:
-        print("Usage: python scripts/check_approval.py <run_dir> prd", file=sys.stderr)
+        print("Usage: python scripts/check_approval.py <run_dir> prd|ux|tickets", file=sys.stderr)
         sys.exit(1)
 
     run_dir = sys.argv[1]

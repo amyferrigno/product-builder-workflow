@@ -1,0 +1,476 @@
+{
+  "run_id": "2026-01-15-ai-clear-fit",
+  "prd_slug": "ai-clear-fit",
+  "epics": [
+    {
+      "id": "EPIC-01",
+      "summary": "[Review] Parse and review meeting requests",
+      "description": "## Problem\nFree-form meeting requests are parsed by hand, which takes 2 hours per request and makes customers wait 24-48 hours for confirmation (PB-1).\n\n## Outcome\nRequests are parsed into a draft that a reviewer checks, corrects and approves before anything is scheduled, with a manual queue as the fallback.\n\n## Scope\n- Included: REQ-001, REQ-002, REQ-003, REQ-004, REQ-008 on SCR-001 and SCR-002.\n- Not included: automatic scheduling without human review, and anything beyond request parsing.\n\n## Links\n- PRD: prd.md\n- UX: ux/spec.md\n- Problem: PB-1",
+      "labels": [
+        "prd-ai-clear-fit",
+        "agentic-pm",
+        "ext-ai-clear-fit-epic-01",
+        "ai-feature"
+      ],
+      "problem_ref": "PB-1",
+      "kind": "feature",
+      "jira_key": null,
+      "children": [
+        {
+          "id": "T-001",
+          "type": "Story",
+          "summary": "[Parsing] Show a parsed draft for each request",
+          "description": "## User value\nAs a reviewer, I want a structured draft of each emailed request, so that I do not parse it by hand.\n\n## Context\nThe parser is the core of the feature: it replaces the manual 2 hours of parsing per request with a draft the reviewer can check.\n\n## REQs\n- REQ-001\n\n## Screens\n- SCR-002\n\n## Acceptance criteria\n- Given a free-form emailed request, When the parser runs, Then it outputs structured constraints covering the constraint types in the request\n- Given a parsed draft, When the reviewer opens it, Then the original request text is shown next to the parsed constraints and the draft is marked as a draft, not a final answer\n- Given a request with no scheduling constraints in its text, When the parser runs, Then no constraint is invented and the reviewer sees that nothing was found\n\n## Analytics events\n- draft_viewed\n\n## AI quality criteria\n- Accuracy: every constraint in the draft comes from the request text; the parser never invents a constraint (PRD A5)\n- Trust: the original text is shown next to the parsed constraints (PRD A7)\n\n## Out of scope\n- Confidence flags, editing and approval are separate stories.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-001",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-001"
+          ],
+          "screen_ids": [
+            "SCR-002"
+          ],
+          "acceptance_criteria": [
+            "Given a free-form emailed request, When the parser runs, Then it outputs structured constraints covering the constraint types in the request",
+            "Given a parsed draft, When the reviewer opens it, Then the original request text is shown next to the parsed constraints and the draft is marked as a draft, not a final answer",
+            "Given a request with no scheduling constraints in its text, When the parser runs, Then no constraint is invented and the reviewer sees that nothing was found"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "draft_viewed"
+          ],
+          "ai_quality_criteria": [
+            "Accuracy: every constraint in the draft comes from the request text; the parser never invents a constraint (PRD A5)",
+            "Trust: the original text is shown next to the parsed constraints (PRD A7)"
+          ]
+        },
+        {
+          "id": "T-002",
+          "type": "Story",
+          "summary": "[Review] Flag low-confidence drafts for the reviewer",
+          "description": "## User value\nAs a reviewer, I want unsure drafts flagged, so that I check them closely.\n\n## Context\nFlagging lets reviewers spend their attention where the parser is least sure, which is how the PRD limits the risk of a misparse.\n\n## REQs\n- REQ-002\n\n## Screens\n- SCR-001\n- SCR-002\n\n## Acceptance criteria\n- Given a parsed request below the confidence threshold, When it is queued, Then it is flagged as low confidence for the reviewer\n- Given a low-confidence draft in the review queue, When the reviewer opens it, Then it opens in the low-confidence state and asks the reviewer to check every constraint against the original text\n- Given the review queue, When the reviewer filters by low confidence only, Then only the flagged drafts are listed\n\n## Analytics events\n- queue_viewed\n- queue_filter_applied\n- request_opened\n\n## AI quality criteria\n- Trust: confidence is shown on the draft and low-confidence parses are flagged (PRD A7)\n- Accuracy: low confidence flags real errors, judged by the confidence calibration dimension of the eval plan (PRD A8)\n\n## Out of scope\n- Choosing the threshold value, which is a separate Spike.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-002",
+            "ai-feature"
+          ],
+          "priority": "High",
+          "req_ids": [
+            "REQ-002"
+          ],
+          "screen_ids": [
+            "SCR-001",
+            "SCR-002"
+          ],
+          "acceptance_criteria": [
+            "Given a parsed request below the confidence threshold, When it is queued, Then it is flagged as low confidence for the reviewer",
+            "Given a low-confidence draft in the review queue, When the reviewer opens it, Then it opens in the low-confidence state and asks the reviewer to check every constraint against the original text",
+            "Given the review queue, When the reviewer filters by low confidence only, Then only the flagged drafts are listed"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "queue_viewed",
+            "queue_filter_applied",
+            "request_opened"
+          ],
+          "ai_quality_criteria": [
+            "Trust: confidence is shown on the draft and low-confidence parses are flagged (PRD A7)",
+            "Accuracy: low confidence flags real errors, judged by the confidence calibration dimension of the eval plan (PRD A8)"
+          ]
+        },
+        {
+          "id": "T-003",
+          "type": "Story",
+          "summary": "[Review] Hold scheduling until a reviewer approves",
+          "description": "## User value\nAs a reviewer, I want nothing scheduled until I approve it, so that a misparse never reaches a customer.\n\n## Context\nHuman review of every parse is the main safeguard against a wrongly scheduled meeting, and removing it is a non-goal.\n\n## REQs\n- REQ-003\n\n## Screens\n- SCR-001\n- SCR-002\n\n## Acceptance criteria\n- Given a parsed request, When no reviewer has approved it, Then the system does not schedule the meeting\n- Given a draft in the review queue, When the reviewer approves it, Then the meeting is scheduled from the approved constraints\n- Given a draft the reviewer rejects, When the rejection is saved, Then the draft is discarded, nothing is scheduled and the reviewer returns to the queue\n\n## Analytics events\n- queue_viewed\n- draft_approved\n- draft_rejected\n\n## AI quality criteria\n- Safety: no meeting is ever scheduled from an unreviewed parse (PRD A5)\n- Control: the AI output is always a draft, never final (PRD A7)\n\n## Out of scope\n- Automatic scheduling without human review.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-003",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-003"
+          ],
+          "screen_ids": [
+            "SCR-001",
+            "SCR-002"
+          ],
+          "acceptance_criteria": [
+            "Given a parsed request, When no reviewer has approved it, Then the system does not schedule the meeting",
+            "Given a draft in the review queue, When the reviewer approves it, Then the meeting is scheduled from the approved constraints",
+            "Given a draft the reviewer rejects, When the rejection is saved, Then the draft is discarded, nothing is scheduled and the reviewer returns to the queue"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "queue_viewed",
+            "draft_approved",
+            "draft_rejected"
+          ],
+          "ai_quality_criteria": [
+            "Safety: no meeting is ever scheduled from an unreviewed parse (PRD A5)",
+            "Control: the AI output is always a draft, never final (PRD A7)"
+          ]
+        },
+        {
+          "id": "T-004",
+          "type": "Story",
+          "summary": "[Review] Let the reviewer correct parsed constraints",
+          "description": "## User value\nAs a reviewer, I want to see and fix every parsed constraint, so that the scheduled meeting is right.\n\n## Context\nCorrections are how a wrong constraint is fixed before scheduling and how the parser later learns from reviewers.\n\n## REQs\n- REQ-004\n\n## Screens\n- SCR-002\n\n## Acceptance criteria\n- Given a draft with a wrong constraint, When the reviewer edits it, Then the corrected constraint is used and the correction is recorded\n- Given the edit form, When the reviewer saves and approves, Then the draft is approved with the corrected constraints\n- Given a draft the reviewer wants to compare, When the reviewer asks to parse again, Then the current draft is kept and a new one is shown for comparison\n\n## Analytics events\n- constraint_edited\n- draft_approved\n- parse_again_requested\n\n## AI quality criteria\n- Control: the reviewer can edit any constraint, reject the draft or send it to manual parsing (PRD A7)\n- Recovery: every correction is recorded so it can be used for retraining (PRD A7)\n\n## Out of scope\n- The retraining itself, which is covered by the retraining story.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-004",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-004"
+          ],
+          "screen_ids": [
+            "SCR-002"
+          ],
+          "acceptance_criteria": [
+            "Given a draft with a wrong constraint, When the reviewer edits it, Then the corrected constraint is used and the correction is recorded",
+            "Given the edit form, When the reviewer saves and approves, Then the draft is approved with the corrected constraints",
+            "Given a draft the reviewer wants to compare, When the reviewer asks to parse again, Then the current draft is kept and a new one is shown for comparison"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "constraint_edited",
+            "draft_approved",
+            "parse_again_requested"
+          ],
+          "ai_quality_criteria": [
+            "Control: the reviewer can edit any constraint, reject the draft or send it to manual parsing (PRD A7)",
+            "Recovery: every correction is recorded so it can be used for retraining (PRD A7)"
+          ]
+        },
+        {
+          "id": "T-005",
+          "type": "Story",
+          "summary": "[Review] Send failed requests to the manual queue",
+          "description": "## User value\nAs a reviewer, I want failed requests sent to a manual queue, so that no customer is left waiting on a broken parser.\n\n## Context\nThe fallback keeps customers unblocked when the parser fails, which the PRD sets as a Must.\n\n## REQs\n- REQ-008\n\n## Screens\n- SCR-001\n- SCR-002\n\n## Acceptance criteria\n- Given a parser outage or an unparseable request, When the request arrives, Then it goes to the manual queue and the customer is not blocked\n- Given a draft the reviewer cannot trust, When the reviewer sends it to manual parsing, Then the request moves to the manual queue\n- Given the review queue, When the reviewer filters by manual queue, Then the requests sent to manual parsing are listed\n\n## Analytics events\n- queue_filter_applied\n- request_sent_to_manual_queue\n- sent_to_manual_parsing\n\n## AI quality criteria\n- Recovery: the manual parsing queue stays available and takes over on failure or outage (PRD A6)\n- Safety: a request that is unparseable or outside the known types is declined and routed to manual parsing (PRD A5)\n\n## Out of scope\n- Improving the parser for the failed cases.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-005",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-008"
+          ],
+          "screen_ids": [
+            "SCR-001",
+            "SCR-002"
+          ],
+          "acceptance_criteria": [
+            "Given a parser outage or an unparseable request, When the request arrives, Then it goes to the manual queue and the customer is not blocked",
+            "Given a draft the reviewer cannot trust, When the reviewer sends it to manual parsing, Then the request moves to the manual queue",
+            "Given the review queue, When the reviewer filters by manual queue, Then the requests sent to manual parsing are listed"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "queue_filter_applied",
+            "request_sent_to_manual_queue",
+            "sent_to_manual_parsing"
+          ],
+          "ai_quality_criteria": [
+            "Recovery: the manual parsing queue stays available and takes over on failure or outage (PRD A6)",
+            "Safety: a request that is unparseable or outside the known types is declined and routed to manual parsing (PRD A5)"
+          ]
+        },
+        {
+          "id": "T-006",
+          "type": "Task",
+          "summary": "[Review] Track review events",
+          "description": "## Purpose\nRecord the review events defined in the screen spec so the team can see how reviewers use the drafts, as the PRD's implicit feedback needs (PRD A9).\n\n## Kind\ninstrumentation\n\n## Done when\n- Given the events of SCR-001 and SCR-002 in ux/spec.md, When a reviewer uses the queue and the review screen, Then each of those events is recorded\n- No event is recorded that is not listed in ux/spec.md",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-006",
+            "ai-feature"
+          ],
+          "priority": "Medium",
+          "req_ids": [
+            "REQ-002",
+            "REQ-003",
+            "REQ-004"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "Given the events of SCR-001 and SCR-002 in ux/spec.md, When a reviewer uses the queue and the review screen, Then each of those events is recorded",
+            "No event is recorded that is not listed in ux/spec.md"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "task_kind": "instrumentation"
+        },
+        {
+          "id": "T-007",
+          "type": "Spike",
+          "summary": "[Review] Decide the confidence threshold",
+          "description": "## Purpose\nPick the confidence threshold that balances review load and risk before the flag in the review queue is switched on.\n\n## Kind\nOpen question: What confidence threshold balances review load and risk (S-3)?\n\n## Done when\n- The Engineer Lead records a proposed threshold value and the reason for it\n- The proposal is checked against the golden set and the confidence calibration dimension in PRD A8",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-007",
+            "ai-feature"
+          ],
+          "priority": "High",
+          "req_ids": [
+            "REQ-002"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "The Engineer Lead records a proposed threshold value and the reason for it",
+            "The proposal is checked against the golden set and the confidence calibration dimension in PRD A8"
+          ],
+          "blocks": [
+            "T-002"
+          ],
+          "jira_key": null,
+          "open_question_ref": "What confidence threshold balances review load and risk (S-3)?"
+        }
+      ]
+    },
+    {
+      "id": "EPIC-02",
+      "summary": "[Quality] Measure and monitor parser quality",
+      "description": "## Problem\nThe parser could misparse constraints, so its accuracy has to be proven before launch and watched after it (PB-1).\n\n## Outcome\nAccuracy is measured on a holdout set and a golden set against the must-pass thresholds, and drift and corrections are reported after launch.\n\n## Scope\n- Included: REQ-005, REQ-006, REQ-007 and the data questions that block the eval, on SCR-003.\n- Not included: retraining automation beyond the monthly cycle.\n\n## Links\n- PRD: prd.md\n- UX: ux/spec.md\n- Problem: PB-1",
+      "labels": [
+        "prd-ai-clear-fit",
+        "agentic-pm",
+        "ext-ai-clear-fit-epic-02",
+        "ai-feature"
+      ],
+      "problem_ref": "PB-1",
+      "kind": "measure_quality",
+      "jira_key": null,
+      "children": [
+        {
+          "id": "T-008",
+          "type": "Story",
+          "summary": "[Quality] Show accuracy against the launch thresholds",
+          "description": "## User value\nAs an engineer lead, I want accuracy shown against the thresholds, so that I know whether the parser can launch.\n\n## Context\nEvals block launch, so the team needs one place to see per-dimension results against the thresholds.\n\n## REQs\n- REQ-005\n\n## Screens\n- SCR-003\n\n## Acceptance criteria\n- Given a holdout set split from the labeled data, When the eval runs, Then accuracy is reported per dimension against the A8 thresholds\n- Given the parser quality screen, When the accuracy check has not run yet, Then it says there are no results and parsing stays behind human review until the thresholds are met\n- Given an accuracy check that fails to complete, When the failure happens, Then no results are saved and the previous results are unchanged\n\n## Analytics events\n- quality_viewed\n- accuracy_check_started\n- accuracy_check_failed\n\n## AI quality criteria\n- Accuracy: every must-pass threshold in the PRD A8 eval plan is met on the golden set before launch\n- Safety: any missed must-pass threshold means no launch (PRD A8)\n\n## Out of scope\n- Drift monitoring after launch.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-008",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-005"
+          ],
+          "screen_ids": [
+            "SCR-003"
+          ],
+          "acceptance_criteria": [
+            "Given a holdout set split from the labeled data, When the eval runs, Then accuracy is reported per dimension against the A8 thresholds",
+            "Given the parser quality screen, When the accuracy check has not run yet, Then it says there are no results and parsing stays behind human review until the thresholds are met",
+            "Given an accuracy check that fails to complete, When the failure happens, Then no results are saved and the previous results are unchanged"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "quality_viewed",
+            "accuracy_check_started",
+            "accuracy_check_failed"
+          ],
+          "ai_quality_criteria": [
+            "Accuracy: every must-pass threshold in the PRD A8 eval plan is met on the golden set before launch",
+            "Safety: any missed must-pass threshold means no launch (PRD A8)"
+          ]
+        },
+        {
+          "id": "T-009",
+          "type": "Story",
+          "summary": "[Quality] Report drift and correction rates",
+          "description": "## User value\nAs an engineer lead, I want drift and correction rates reported, so that I see quality slipping early.\n\n## Context\nRequest patterns change over time, and the PRD names drift as a risk that monitoring has to catch.\n\n## REQs\n- REQ-006\n\n## Screens\n- SCR-003\n\n## Acceptance criteria\n- Given live requests after launch, When a monitoring period ends, Then drift and correction rates are reported\n- Given repeated corrections of the same constraint type, When the team opens the parser quality screen, Then the Engineer Lead can be asked about it through the escalation state\n- Given the parser quality screen, When no live requests exist yet, Then the screen shows the empty state that no accuracy results exist instead of invented numbers\n\n## Analytics events\n- quality_viewed\n- engineer_lead_contacted\n\n## AI quality criteria\n- Trust: drift is tracked through the correction rate and the mix of constraint types over time (PRD A9)\n- Recovery: repeated corrections of the same constraint type are escalated to the Engineer Lead (PRD A6)\n\n## Out of scope\n- Setting alert thresholds, which the PRD leaves as proposals.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-009",
+            "ai-feature"
+          ],
+          "priority": "Medium",
+          "req_ids": [
+            "REQ-006"
+          ],
+          "screen_ids": [
+            "SCR-003"
+          ],
+          "acceptance_criteria": [
+            "Given live requests after launch, When a monitoring period ends, Then drift and correction rates are reported",
+            "Given repeated corrections of the same constraint type, When the team opens the parser quality screen, Then the Engineer Lead can be asked about it through the escalation state",
+            "Given the parser quality screen, When no live requests exist yet, Then the screen shows the empty state that no accuracy results exist instead of invented numbers"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": true,
+          "analytics_events": [
+            "quality_viewed",
+            "engineer_lead_contacted"
+          ],
+          "ai_quality_criteria": [
+            "Trust: drift is tracked through the correction rate and the mix of constraint types over time (PRD A9)",
+            "Recovery: repeated corrections of the same constraint type are escalated to the Engineer Lead (PRD A6)"
+          ]
+        },
+        {
+          "id": "T-010",
+          "type": "Story",
+          "summary": "[Quality] Check a retrained model before release",
+          "description": "## User value\nAs an engineer lead, I want each retrained model checked on the golden set, so that retraining never lowers quality.\n\n## Context\nMonthly retraining on reviewer corrections only helps if each new model is checked before it is used.\n\n## REQs\n- REQ-007\n\n## Acceptance criteria\n- Given new reviewer-corrected examples, When the monthly retraining runs, Then the new model is evaluated against the golden set before it replaces the old one\n- Given a retrained model that misses a must-pass threshold, When it is evaluated against the golden set, Then it does not replace the old model\n- Given a retrained model that meets every must-pass threshold, When the evaluation finishes, Then it may replace the old model\n\n## AI quality criteria\n- Accuracy: a retrained model meets the same PRD A8 must-pass thresholds as the first model before it is used\n- Safety: evals block release, so a missed threshold means the old model stays in use (PRD A8)\n\n## Out of scope\n- Retraining automation beyond the monthly cycle.",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-010",
+            "ai-feature"
+          ],
+          "priority": "Medium",
+          "req_ids": [
+            "REQ-007"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "Given new reviewer-corrected examples, When the monthly retraining runs, Then the new model is evaluated against the golden set before it replaces the old one",
+            "Given a retrained model that misses a must-pass threshold, When it is evaluated against the golden set, Then it does not replace the old model",
+            "Given a retrained model that meets every must-pass threshold, When the evaluation finishes, Then it may replace the old model"
+          ],
+          "blocks": [],
+          "jira_key": null,
+          "user_facing": false,
+          "analytics_events": [],
+          "ai_quality_criteria": [
+            "Accuracy: a retrained model meets the same PRD A8 must-pass thresholds as the first model before it is used",
+            "Safety: evals block release, so a missed threshold means the old model stays in use (PRD A8)"
+          ]
+        },
+        {
+          "id": "T-011",
+          "type": "Task",
+          "summary": "[Quality] Build the golden set and holdout set",
+          "description": "## Purpose\nCreate the golden set and the holdout set that the accuracy check in PRD A8 runs on.\n\n## Kind\neval\n\n## Done when\n- A holdout set is split from the labeled data and kept apart from training\n- A golden set exists with good, bad, edge and failure cases as described in PRD A8",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-011",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-005"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "A holdout set is split from the labeled data and kept apart from training",
+            "A golden set exists with good, bad, edge and failure cases as described in PRD A8"
+          ],
+          "blocks": [
+            "T-008"
+          ],
+          "jira_key": null,
+          "task_kind": "eval"
+        },
+        {
+          "id": "T-012",
+          "type": "Task",
+          "summary": "[Quality] Audit the labeled examples",
+          "description": "## Purpose\nCheck that the labeled examples are good enough for a train/test split, since the PRD assumes they are.\n\n## Kind\ndata\n\n## Done when\n- A sample of the labels is audited and the result is written down\n- The Data Analyst confirms whether the labels can be used for the split",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-012",
+            "ai-feature"
+          ],
+          "priority": "High",
+          "req_ids": [
+            "REQ-005"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "A sample of the labels is audited and the result is written down",
+            "The Data Analyst confirms whether the labels can be used for the split"
+          ],
+          "blocks": [
+            "T-011"
+          ],
+          "jira_key": null,
+          "task_kind": "data"
+        },
+        {
+          "id": "T-013",
+          "type": "Spike",
+          "summary": "[Quality] Confirm production access to request data",
+          "description": "## Purpose\nConfirm that the team can read the request logs and labeled examples, which every eval and training step depends on.\n\n## Kind\nOpen question: Is production access to the request data confirmed?\n\n## Done when\n- The Data Analyst states whether production access to the request data is confirmed\n- If access is not confirmed, the missing step and its owner are written down",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-013",
+            "ai-feature"
+          ],
+          "priority": "Highest",
+          "req_ids": [
+            "REQ-005"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "The Data Analyst states whether production access to the request data is confirmed",
+            "If access is not confirmed, the missing step and its owner are written down"
+          ],
+          "blocks": [
+            "T-012"
+          ],
+          "jira_key": null,
+          "open_question_ref": "Is production access to the request data confirmed?"
+        },
+        {
+          "id": "T-014",
+          "type": "Spike",
+          "summary": "[Quality] Count examples per constraint type",
+          "description": "## Purpose\nFind out whether rare constraint types have enough examples for the golden set and the accuracy thresholds.\n\n## Kind\nOpen question: How many examples exist per constraint type (M-5)?\n\n## Done when\n- The Data Analyst reports the number of examples for each constraint type\n- Constraint types with few examples are listed so golden set cases can be added for them",
+          "labels": [
+            "prd-ai-clear-fit",
+            "agentic-pm",
+            "ext-ai-clear-fit-t-014",
+            "ai-feature"
+          ],
+          "priority": "High",
+          "req_ids": [
+            "REQ-005"
+          ],
+          "screen_ids": [],
+          "acceptance_criteria": [
+            "The Data Analyst reports the number of examples for each constraint type",
+            "Constraint types with few examples are listed so golden set cases can be added for them"
+          ],
+          "blocks": [
+            "T-011"
+          ],
+          "jira_key": null,
+          "open_question_ref": "How many examples exist per constraint type (M-5)?"
+        }
+      ]
+    }
+  ]
+}

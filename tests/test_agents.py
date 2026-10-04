@@ -344,3 +344,53 @@ def test_pm_approve_covers_ux_and_stays_human_only():
     body = path.read_text()
     assert "/pm-approve ux <run-id>" in body
     assert "traceability.md" in body
+
+
+# --- M6: ticket-architect, prd-to-tickets skill, pm-approve Gate C ---
+def test_ticket_architect_front_matter_and_tier():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "ticket-architect.md")
+    assert fm["name"] == "ticket-architect"
+    assert fm["description"]
+    assert fm["model"] == _tier_model("ticket_architect") == "sonnet"
+    assert {t.strip() for t in fm["tools"].split(",")} == {"Read", "Write", "Bash"}
+
+
+def test_ticket_architect_rules_and_scripts():
+    body = (REPO / ".claude" / "agents" / "ticket-architect.md").read_text()
+    for heading in ("## Mode 1: design", "## Mode 2: revision"):
+        assert heading in body
+    assert "scripts/validate_tickets.py" in body
+    assert "scripts/preview_tickets.py" in body
+    assert "Never Sub-tasks" in body
+    assert "Never add story points" in body
+    assert "`jira_key` is always `null`" in body
+    assert "never run `scripts/approve.py` or `scripts/jira_publish.py`" in body
+    assert "Never touch `prd.md`" in body
+
+
+def test_prd_to_tickets_skill_exists_and_stays_human_gated():
+    path = REPO / ".claude" / "skills" / "prd-to-tickets" / "SKILL.md"
+    assert path.exists(), "prd-to-tickets SKILL.md not found"
+    fm = parse_agent_file(path)
+    assert fm["name"] == "prd-to-tickets"
+    assert fm["description"]
+    body = path.read_text()
+    assert len(body.splitlines()) < 200
+    assert "/pm-tickets <run-id>" in body
+    assert "scripts/check_approval.py runs/<run-id> ux" in body
+    assert "scripts/validate_tickets.py" in body
+    assert "audit.max_revision_loops" in body
+    assert "scripts/jira_publish.py" in body
+    assert "Nothing is sent to Jira" in body
+    assert "must never run `scripts/approve.py`" in body
+    assert "/pm-approve tickets <run-id>" in body
+
+
+def test_pm_approve_covers_tickets_and_stays_human_only():
+    path = REPO / ".claude" / "skills" / "pm-approve" / "SKILL.md"
+    fm = parse_agent_file(path)
+    assert fm["disable-model-invocation"] is True
+    body = path.read_text()
+    assert "/pm-approve tickets <run-id>" in body
+    assert "No override exists for tickets" in body
+    assert "Writing Jira keys" in body

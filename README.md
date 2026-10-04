@@ -24,8 +24,8 @@ See [planning.md](planning.md) for the full roadmap and status.
 - **M1** (done): Extraction + problem framing.
 - **M2** (done): PRD writer + auditor.
 - **M3 + M4** (done, merged): Data enrichment and customer anecdotes.
-- **M5** (current): UX design (Stage 2).
-- **M6**: Jira dry-run.
+- **M5** (done): UX design (Stage 2).
+- **M6** (current): Jira dry-run (Stage 3).
 - **M7**: Jira publish.
 - **M8**: Cost + polish.
 
@@ -67,6 +67,8 @@ Commands (skills in `.claude/skills/`):
 - `/pm-ux <run-id>`: Stage 2. Needs an approved PRD. Designs, validates, audits, loops, then stops at Human Gate B.
 - `/pm-audit ux <run-id>`: audit an existing `ux/` folder.
 - `/pm-approve ux <run-id> [override reason]`: human only. Approves the UX (Gate B).
+- `/pm-tickets <run-id>`: Stage 3. Needs an approved UX. Plans and validates tickets, stops at Human Gate C, and after approval writes the dry-run payloads.
+- `/pm-approve tickets <run-id>`: human only. Approves the tickets (Gate C). No override exists.
 
 Scripts:
 
@@ -84,6 +86,7 @@ Hooks (`.claude/settings.json`):
 - `guard_approvals.py` (before Write/Edit): blocks any write under `runs/*/approvals/`.
 - `validate_artifact.py` (after Write/Edit): runs `validate_prd.py` when `runs/*/prd.md` is edited and reports errors.
 - `guard_stage_gate.py` (before Write/Edit): blocks writes under `runs/*/ux/` unless the PRD approval is valid, and writes to `runs/*/tickets.*` unless the UX approval is valid.
+- `guard_jira_write.py` (before Bash and `mcp__*`): blocks a Jira write tool or a `curl` to atlassian.net while `jira.mode` is `dry_run`, and blocks `jira_publish.py` when the tickets approval is not valid. It is an early warning; the control is `scripts/jira_publish.py`, which refuses on its own.
 
 The stage gate hook covers Write and Edit only, and it allows the write if it cannot run its check, so it is an early warning. The real control is `scripts/approve.py` and `scripts/check_approval.py`, which refuse to proceed without a valid approval.
 
@@ -101,6 +104,18 @@ Agents: `prd-writer` (problem framing, PRD draft, PRD revision) and `prd-auditor
 What the script checks (`scripts/validate_ux.py`): required states, every Must requirement mapped to a screen, REQ ids that exist, self-contained files, design tokens only, labels and alt text, and that the index and spec match the screens. What the auditor judges (agent `ux-auditor`, rubric `templates/audit-ux.rubric.yaml`): requirement coverage, required states, AI trust, control and recovery, accessibility, token consistency and copy clarity. If the script finds errors, the verdict is FAIL whatever the auditor scored.
 
 Gate B: the human runs `/pm-approve ux <run-id>`. It writes `traceability.md` (REQ to screens) and leaves `prd.md` untouched. Changing the PRD or any UX file afterwards makes the UX approval stale. Screenshots are not included: no headless browser and no new dependency in M5.
+
+## Stage 3: tickets, dry run (M6)
+
+`/pm-tickets <run-id>` turns an approved PRD and approved UX into `runs/<run-id>/tickets.manifest.json` (agent `ticket-architect`): Epics, Stories, Tasks and Spikes, never Sub-tasks and never story points.
+
+What the Definition of Ready checks (`scripts/validate_tickets.py`, no model involved): schema, ids and labels, summary format (`[Area] Verb object`, at most 80 characters), no TODO or TBD, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events taken from the spec for user-facing Stories, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle and every `jira_key` null.
+
+The preview: `scripts/preview_tickets.py` writes `tickets.preview.md` with totals, the ticket tree and the Must coverage table.
+
+Gate C: the human reads the preview and runs `/pm-approve tickets <run-id>`. It refuses unless the UX approval is valid and the Definition of Ready passes, and there is no override. Changing the manifest, the UX or the PRD afterwards makes the approval stale. Changing only a `jira_key` value does not.
+
+The dry run: after approval, `scripts/jira_publish.py runs/<run-id>` writes `tickets.dryrun.json`, the exact Jira payloads (epics first). Nothing can reach Jira in this version: the script imports no network library and refuses any `jira.mode` other than `dry_run`. Live publishing is M7.
 
 ## Evidence plug-ins (M3 + M4: data and anecdotes)
 

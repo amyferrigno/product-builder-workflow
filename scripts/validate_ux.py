@@ -107,6 +107,26 @@ def spec_screen_reqs(spec_text: str) -> Dict[str, List[str]]:
     return result
 
 
+def spec_screen_events(spec_text: str) -> Dict[str, List[str]]:
+    """Map SCR id to the event names listed under its '### Analytics events' sub-heading.
+
+    An event name is the first word of each bullet (backticks removed).
+    """
+    result: Dict[str, List[str]] = {}
+    for scr_id, _title, body in split_sections(spec_text, SPEC_HEADING_RE):
+        parts = re.split(r'^###\s+(.+?)\s*$', body, flags=re.MULTILINE)
+        events: List[str] = []
+        for i in range(1, len(parts) - 1, 2):
+            if parts[i].strip() != "Analytics events":
+                continue
+            for line in parts[i + 1].split('\n'):
+                match = re.match(r'^\s*[-*]\s+`?([\w.:-]+)', line)
+                if match:
+                    events.append(match.group(1))
+        result[scr_id] = events
+    return result
+
+
 def check_reqs_line(where: str, body: str, prd_reqs: Set[str]) -> List[str]:
     errors: List[str] = []
     tokens = parse_reqs_line(body)

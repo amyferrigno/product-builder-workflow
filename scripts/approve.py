@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Approve a PRD artifact after audit.
-Usage: python scripts/approve.py <run_dir> prd|ux [--override "reason"] [--decisions-file decisions.md]
+Usage: python scripts/approve.py <run_dir> prd|ux|tickets [--override "reason"] [--decisions-file decisions.md]
 """
 
 import sys
@@ -14,7 +14,9 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_approval import approval_status  # noqa: E402
 from traceability import write_traceability  # noqa: E402
+from tickets_hash import tickets_hash  # noqa: E402
 from ux_hash import ux_hash  # noqa: E402
+from validate_tickets import validate_tickets  # noqa: E402
 
 try:
     from jsonschema import Draft202012Validator
@@ -84,7 +86,10 @@ def approve_prd(
         approve_ux(run_dir, override_reason=override_reason, decisions_file=decisions_file)
         return
 
-    # 'prd' and 'ux' are supported; tickets come in a later milestone
+    if artifact == "tickets":
+        approve_tickets(run_dir, override_reason=override_reason, decisions_file=decisions_file)
+        return
+
     if artifact != "prd":
         raise ValueError(f"Artifact '{artifact}' not available until a later milestone")
 
@@ -308,13 +313,114 @@ def approve_ux(
         raise ValueError("Cannot write decisions file")
 
 
+def approve_tickets(
+    run_dir: str,
+    override_reason: str = None,
+    decisions_file: str = None
+) -> None:
+    """
+    Approve the ticket manifest (Gate C). prd.md and ux/ are never modified.
+    There is no override: the Definition of Ready is checked here by script.
+
+    Raises ValueError if approval is not possible.
+    """
+    if override_reason is not None:
+        raise ValueError("--override is not allowed for tickets; fix the manifest so it passes the Definition of Ready")
+
+    run_path = Path(run_dir)
+
+    ux_ok, ux_message = approval_status(run_dir, "ux")
+    if not ux_ok:
+        raise ValueError(f"UX approval is not valid ({ux_message}); approve the UX first")
+
+    repo_root = find_repo_root(run_dir)
+    try:
+        errors = validate_tickets(run_dir, repo_root)
+    except (ValueError, OSError) as e:
+        raise ValueError(f"Cannot validate tickets: {e}")
+    if errors:
+        shown = "\n".join(f"  - {e}" for e in errors)
+        raise ValueError(f"Tickets fail the Definition of Ready ({len(errors)} errors):\n{shown}")
+
+    state = load_state(run_dir)
+
+    try:
+        current_hash = tickets_hash(run_dir)
+        manifest = json.loads((run_path / "tickets.manifest.json").read_text(encoding="utf-8"))
+        ux_current = ux_hash(run_dir)
+        prd_hash = hash_file(str(run_path / "prd.md"))
+    except (ValueError, OSError) as e:
+        raise ValueError(str(e))
+    ticket_count = sum(1 + len(e.get("children", [])) for e in manifest.get("epics", []))
+
+    approval = {
+        "artifact": "tickets",
+        "sha256": current_hash,
+        "prd_sha256": prd_hash,
+        "ux_sha256": ux_current,
+        "ticket_count": ticket_count,
+        "approved_at": datetime.utcnow().isoformat() + "Z"
+    }
+
+    try:
+        state["approval_hashes"]["tickets"] = current_hash
+    except (KeyError, TypeError):
+        raise ValueError("state.json is malformed: missing approval_hashes")
+    state["stage"] = "stage3"
+    state["status"] = "approved"
+    state["updated_at"] = datetime.utcnow().isoformat() + "Z"
+
+    schema = load_schema("state", repo_root)
+    if list(Draft202012Validator(schema).iter_errors(state)):
+        raise ValueError("State validation failed: state.json would be invalid after update")
+
+    # Traceability goes to its own file; prd.md and ux/ are left alone
+    try:
+        write_traceability(run_dir)
+    except (OSError, UnicodeDecodeError):
+        raise ValueError("Cannot write traceability.md")
+
+    # Write state, then the approval file last
+    try:
+        with open(run_path / "state.json", 'w') as f:
+            json.dump(state, f, indent=2)
+    except IOError:
+        raise ValueError("Cannot write state.json")
+
+    approvals_dir = run_path / "approvals"
+    try:
+        approvals_dir.mkdir(parents=True, exist_ok=True)
+        with open(approvals_dir / "tickets.approved", 'w') as f:
+            json.dump(approval, f, indent=2)
+    except IOError:
+        raise ValueError("Cannot write approval file")
+
+    decisions_path = repo_root / "decisions.md" if decisions_file is None else Path(decisions_file)
+    entry_lines = [
+        "",
+        f"## {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} - Tickets Approval",
+        "",
+        "**Decided by**: Product Owner",
+        "",
+        f"**Run**: {state.get('run_id', 'unknown')}",
+        "",
+        f"**Tickets**: {ticket_count}",
+        "",
+    ]
+    try:
+        with open(decisions_path, 'a') as f:
+            f.write("\n".join(entry_lines))
+    except IOError:
+        raise ValueError("Cannot write decisions file")
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Approve a PRD artifact after audit."
     )
     parser.add_argument("run_dir", help="Run directory")
-    parser.add_argument("artifact", help="Artifact name ('prd' or 'ux')")
+    parser.add_argument("artifact", help="Artifact name ('prd', 'ux' or 'tickets')")
     parser.add_argument(
         "--override",
         default=None,

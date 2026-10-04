@@ -22,7 +22,7 @@ except ImportError as e:
     sys.exit(1)
 
 
-# PRD headings (section 1-20) - from PLAN.md
+# PRD headings (section 1-20)
 PRD_HEADINGS = [
     "Header",
     "TL;DR",

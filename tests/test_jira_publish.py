@@ -65,7 +65,7 @@ def test_refuses_when_mode_is_not_dry_run(tmp_path):
     run = approved_run(tmp_path)
     result = publish(run, write_config(tmp_path, mode="live"))
     assert result.returncode == 1
-    assert "live publish is not available until M7" in result.stderr
+    assert "unknown jira.mode" in result.stderr
     assert not (run / "tickets.dryrun.json").exists()
 
 

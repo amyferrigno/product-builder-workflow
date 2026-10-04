@@ -115,7 +115,7 @@ def publish_dry_run(run_dir: str, config_path: str) -> List[dict]:
     if jira.get("mode") == "publish":
         raise ValueError(f"jira.mode is publish but --publish was not given; {TWO_KEYS}")
     if jira.get("mode") != "dry_run":
-        raise ValueError("live publish is not available until M7 (set jira.mode to dry_run)")
+        raise ValueError(f"unknown jira.mode {jira.get('mode')!r}: use dry_run or publish")
 
     project_key = str(jira.get("project_key", ""))
     default_labels = [str(x) for x in (jira.get("default_labels") or [])]

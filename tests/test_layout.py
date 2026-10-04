@@ -53,10 +53,10 @@ def test_config_files_exist():
 
 
 def test_knowledge_files_exist():
-    """Check that CLAUDE.md, decisions.md, memory.md, README.md exist."""
+    """Check that CLAUDE.md and README.md exist (decisions.md is a local log, not committed)."""
     repo_root = Path(__file__).parent.parent
 
-    files = ["CLAUDE.md", "decisions.md", "memory.md", "README.md"]
+    files = ["CLAUDE.md", "README.md"]
     for file_name in files:
         file_path = repo_root / file_name
         assert file_path.exists(), f"Missing {file_name}"

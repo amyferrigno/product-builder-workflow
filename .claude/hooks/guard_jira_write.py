@@ -26,26 +26,6 @@ READ_ALLOWLIST = ("gettransitionsforjiraissue", "getjiraissueremoteissuelinks", 
 SEPARATORS = {";", "&&", "||", "|", "&", "\n"}
 
 
-def read_jira_mode(project_dir: str) -> str:
-    """Read jira.mode from pm.config.yaml with a line parser. Unreadable means dry_run."""
-    try:
-        text = (Path(project_dir) / "pm.config.yaml").read_text(encoding="utf-8")
-    except Exception:
-        return "dry_run"
-    in_jira = False
-    for raw in text.splitlines():
-        line = raw.split("#", 1)[0].rstrip()
-        if not line.strip():
-            continue
-        indented = line[0] in " \t"
-        if not indented:
-            in_jira = line.strip() == "jira:"
-            continue
-        if in_jira and line.strip().startswith("mode:"):
-            value = line.strip()[len("mode:"):].strip().strip("'\"")
-            return value or "dry_run"
-    return "dry_run"
-
 
 def load_approval_status(project_dir: str):
     """Import approval_status from scripts/check_approval.py by file path."""

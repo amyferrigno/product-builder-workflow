@@ -4,3 +4,8 @@ __pycache__/
 .cache/
 runs/*
 !runs/.gitkeep
+# Local working notes and decision log
+PLAN.md
+planning.md
+decisions.md
+memory.md

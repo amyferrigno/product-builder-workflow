@@ -26,7 +26,6 @@ The hooks in `.claude/hooks/` are early warnings: they stop the model early and 
 
 ## Milestones
 
-See [planning.md](planning.md) for the full roadmap and status.
 
 - **M0** (done): Scaffold—repo layout, config, schemas, validator, tests.
 - **M1** (done): Extraction + problem framing.
@@ -35,7 +34,7 @@ See [planning.md](planning.md) for the full roadmap and status.
 - **M5** (done): UX design (Stage 2).
 - **M6** (done): Jira dry-run (Stage 3).
 - **Hardening** (done): recomputed verdicts, human prompt on approvals, guard fixes.
-- **M7** (current): Jira publish.
+- **M7** (done): Jira publish, proven against a fake Jira.
 - **M8**: Cost + polish.
 
 ## Running the Workflow (M1: Extraction + Problem Framing)
@@ -277,9 +276,7 @@ PRD rule: any quoted passage of 4 or more words in section 6b must appear in an 
 ## Key Files
 
 - `CLAUDE.md`: Principles and repo layout.
-- `decisions.md`: Aligned decisions with reasons.
-- `memory.md`: Learnings and patterns from runs.
-- `PLAN.md`: Current milestone steps.
+- `decisions.md`: Local decision log. `scripts/approve.py` appends every approval to it. It is created on first use and is not committed.
 - `pm.config.yaml`: Configuration and model tier mapping.
 - `connectors/registry.yaml`: Registry of data sources.
 - `schemas/`: JSON Schema validators.
@@ -294,4 +291,4 @@ The workflow operates in 3 stages:
 2. **Stage 2** (PRD + UX): Problem → audited PRD and UX screens.
 3. **Stage 3** (Jira): Screens → Jira tickets (dry-run or publish).
 
-Each stage has a budget, gates, and approval checkpoints. See `PLAN.md` for the current milestone.
+Each stage has a budget, gates, and approval checkpoints.

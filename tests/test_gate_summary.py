@@ -490,7 +490,7 @@ def _md_section(prd: str, heading: str) -> str:
 @pytest.mark.parametrize("name", FIXTURES)
 def test_gate_summary_on_golden_fixture(name: str, tmp_path: Path):
     decisions = REPO_ROOT / "decisions.md"
-    decisions_before = decisions.read_bytes()
+    decisions_before = decisions.read_bytes() if decisions.exists() else None
 
     run_dir = _build_golden_run(name, tmp_path)
     expected = yaml.safe_load((REPO_ROOT / "fixtures" / name / "expected.yaml").read_text())
@@ -542,7 +542,7 @@ def test_gate_summary_on_golden_fixture(name: str, tmp_path: Path):
     assert "  not available" not in lines[lines.index("MVP Scope (out):") + 1]
 
     # Tests must never write to the real decisions file
-    assert decisions.read_bytes() == decisions_before
+    assert (decisions.read_bytes() if decisions.exists() else None) == decisions_before
 
 
 def test_gate_summary_open_questions_from_table():

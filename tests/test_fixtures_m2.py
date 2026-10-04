@@ -78,7 +78,7 @@ def test_golden_prd_validates_and_audits(name: str, tmp_path: Path):
 
 def test_expected_verdicts():
     # Without provider data evidence strength is capped at 2, so notes-only PRDs
-    # get at best PASS_WITH_RISK (decisions.md entry 14).
+    # get at best PASS_WITH_RISK.
     assert load_expected("clean-meeting")["prd"]["verdict"] == "PASS_WITH_RISK"
     assert load_expected("ai-clear-fit")["prd"]["verdict"] == "PASS_WITH_RISK"
     assert load_expected("thin-evidence")["prd"]["verdict"] == "FAIL"

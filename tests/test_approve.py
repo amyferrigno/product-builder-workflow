@@ -364,7 +364,7 @@ def test_approve_unsupported_artifact():
         code, stdout, stderr = run_approve(run_dir, artifact="bogus")
 
         assert code == 1, "Should have failed"
-        assert "milestone" in stderr or "not available" in stderr
+        assert "unknown artifact" in stderr
         assert "Traceback" not in stderr
 
 
@@ -713,7 +713,7 @@ def test_approve_unknown_artifact_unavailable(tmp_path):
     run = audited_run(tmp_path)
     code, _, stderr = run_approve(str(run), "bogus")
     assert code == 1
-    assert "not available until a later milestone" in stderr
+    assert "unknown artifact 'bogus': use prd, ux or tickets" in stderr
 
 
 def test_check_approval_ux_approved(tmp_path):

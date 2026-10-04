@@ -145,3 +145,15 @@ def test_unparsed_warning_is_relayed_as_system_message(tmp_path):
     assert result.returncode == 0
     message = json.loads(result.stdout)
     assert message["systemMessage"] == "WARN: stage1 cost cannot be fully estimated (1 unparsed entries)"
+
+
+def test_symlinked_cost_log_is_not_written_through(tmp_path):
+    project = make_project(tmp_path / "project")
+    run = make_run(project)
+    activate(project, run)
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"keep me\n")
+    (run / "cost.log.jsonl").symlink_to(outside)
+    result = run_hook(project, payload(TRANSCRIPTS / "normal.jsonl"))
+    assert result.returncode == 0
+    assert outside.read_bytes() == b"keep me\n"

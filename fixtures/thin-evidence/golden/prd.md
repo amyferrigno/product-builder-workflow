@@ -41,7 +41,7 @@ No anecdote provider configured. No anecdote records exist for this run, and no 
 - Whether the flow holds up with real users (Q-3). How to close: test the current flow with real users.
 - How much time a shorter flow would save (Q-2, M-2). How to close: measure time to create a meeting from usage data.
 - How many users change the attendees or description after creating a meeting (Q-4). How to close: the analytics the group decided to add this sprint (S-2, D-2).
-- No data provider or anecdote provider is configured. How to close: add data enrichment (M3) and anecdotes (M4) when available.
+- No data provider or anecdote provider is configured. How to close: add data enrichment and anecdotes when available.
 
 ## 7. Goals and non-goals
 

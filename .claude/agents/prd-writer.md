@@ -52,7 +52,7 @@ Write only `02-problem.md` in the run folder. It must:
   - `source_items`: Extraction IDs that define this problem (e.g., ["P-1", "U-2"])
   - `reframed_from_solution`: true if you converted a solution-only suggestion into a problem hypothesis
 - `primary_problem`: ID of the one problem you're solving (e.g., "PB-1")
-- `parked_problems`: IDs of other problems deferred to later milestones
+- `parked_problems`: IDs of other problems deferred to later
 - `ai.proposed`: true if the primary problem might benefit from AI
   - If true, include:
     - `gates`: object with keys "1" to "5", each with `result` (pass|fail|unknown) and optional `reason` field

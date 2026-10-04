@@ -172,7 +172,7 @@ Workflow decisions:
 
 - PB-1 is the primary problem because it is the one backed by user test evidence (M-1); PB-2 and PB-3 are parked, as in the problem framing.
 - Section 8 targets are proposals because the notes state none.
-- No evidence or anecdote provider exists in this milestone, so evidence comes only from the meeting (6c).
+- No evidence or anecdote provider is configured for this run, so evidence comes only from the meeting (6c).
 
 ## 20. Traceability
 

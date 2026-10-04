@@ -16,6 +16,29 @@ REPO_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 
+def cost_line(run_dir, config=None) -> str:
+    """One cost line for stage 1. Never raises."""
+    no_data = "Cost: no cost data"
+    try:
+        import cost_meter
+        if not (Path(run_dir) / cost_meter.COST_LOG).is_file():
+            return no_data
+        if config is None:
+            config = cost_meter.load_config()
+        if not isinstance(config.get("pricing"), dict):
+            return no_data
+        info = cost_meter.summarise(run_dir, config)["stage1"]
+        if info["budget_usd"] is None or info["percent"] is None:
+            return no_data
+        line = (f"Cost: {info['spent_usd']:.2f} of {info['budget_usd']:.2f} USD "
+                f"estimated for stage 1 ({info['percent']:.1f}%)")
+        if info.get("unparsed"):
+            line += f" ({info['unparsed']} unparsed entries not counted)"
+        return line
+    except Exception:
+        return no_data
+
+
 def load_json_file(file_path: Path) -> dict:
     """Load a JSON file."""
     try:
@@ -411,7 +434,7 @@ def gate_summary(run_dir: str, artifact: str) -> None:
     else:
         lines.append("  not available")
 
-    lines.append("Cost: not metered until M8")
+    lines.append(cost_line(run_dir))
     if verdict in ("PASS", "PASS_WITH_RISK"):
         lines.append(f"Next step: Approve with /pm-approve prd {run_id} or send change requests")
     elif verdict == "FAIL":

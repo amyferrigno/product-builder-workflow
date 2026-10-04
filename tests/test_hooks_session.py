@@ -135,3 +135,14 @@ def test_unsafe_active_pointer_is_treated_as_no_active_run(project, name, pointe
     assert result.returncode == 0
     assert result.stdout == ""
     assert _listing(project) == before
+
+
+@pytest.mark.parametrize("name,filename", [("checkpoint", "checkpoint.md"), ("close_out", "session.log.jsonl")])
+def test_hook_does_not_write_through_a_symlink(active, project, tmp_path, name, filename):
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"keep me\n")
+    (active / filename).symlink_to(outside)
+    result = run_hook(name, project)
+    assert result.returncode == 0
+    assert outside.read_bytes() == b"keep me\n"
+    assert (active / filename).is_symlink()

@@ -214,7 +214,7 @@ def test_meeting_to_prd_never_approves():
     assert "audit.max_revision_loops" in body
 
 
-# --- M3 + M4: data-enricher, anecdote-curator, new skills, settings ---
+# --- data-enricher and anecdote-curator, new skills, settings ---
 def _tier_model(key):
     with open(REPO / "pm.config.yaml") as f:
         config = yaml.safe_load(f)
@@ -288,7 +288,7 @@ def test_settings_json_is_valid_and_references_four_hooks():
     assert {"Write|Edit", "Bash", "mcp__.*"} <= pre_matchers
 
 
-# --- M5: ux-designer, ux-auditor, new skills ---
+# --- ux-designer and ux-auditor, new skills ---
 def test_ux_designer_front_matter_and_tier():
     fm = parse_agent_file(REPO / ".claude" / "agents" / "ux-designer.md")
     assert fm["name"] == "ux-designer"
@@ -352,7 +352,7 @@ def test_pm_approve_covers_ux_and_stays_human_only():
     assert "traceability.md" in body
 
 
-# --- M6: ticket-architect, prd-to-tickets skill, pm-approve Gate C ---
+# --- ticket-architect, prd-to-tickets skill, pm-approve Gate C ---
 def test_ticket_architect_front_matter_and_tier():
     fm = parse_agent_file(REPO / ".claude" / "agents" / "ticket-architect.md")
     assert fm["name"] == "ticket-architect"
@@ -392,7 +392,7 @@ def test_prd_to_tickets_skill_exists_and_stays_human_gated():
     assert "/pm-approve tickets <run-id>" in body
 
 
-# --- M7: jira-publisher, jira-publish skill ---
+# --- jira-publisher and jira-publish skill ---
 def test_jira_publisher_front_matter_and_tier():
     fm = parse_agent_file(REPO / ".claude" / "agents" / "jira-publisher.md")
     assert fm["name"] == "jira-publisher"
@@ -432,7 +432,7 @@ def test_pm_approve_covers_tickets_and_stays_human_only():
     assert "Writing Jira keys" in body
 
 
-# --- M8: pm-status, pm-run, decision step ---
+# --- pm-status, pm-run, decision step ---
 def test_pm_status_and_pm_run_skills_exist_and_are_small():
     for skill in ("pm-status", "pm-run"):
         path = REPO / ".claude" / "skills" / skill / "SKILL.md"

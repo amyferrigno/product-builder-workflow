@@ -25,6 +25,7 @@ from ux_hash import ux_hash  # noqa: E402
 SITE = "https://example.atlassian.net"
 TOKEN = "tok-DISTINCTIVE-9f8e7d6c"
 EMAIL = "someone@example.com"
+OWNERSHIP_HINT = "fix the jira_key in the manifest (or the duplicate in Jira), then rerun"
 
 
 def approved_run(tmp_path, ai=False):
@@ -273,6 +274,7 @@ def test_two_issues_with_same_label_stop_the_publish(tmp_path):
         jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
     assert f"duplicate idempotency label {label}: {a}, {b}" in str(exc.value)
     assert "FAILED at T-001" in str(exc.value)
+    assert OWNERSHIP_HINT in str(exc.value) and "rerun to resume" not in str(exc.value)
 
 
 # --- retries ---
@@ -443,6 +445,7 @@ def test_hand_edited_key_of_unrelated_issue_is_not_overwritten(tmp_path):
         jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
     slug = manifest_of(run)["prd_slug"]
     assert f"jira_key {other} for EPIC-01 does not carry label ext-{slug}-epic-01" in str(exc.value)
+    assert OWNERSHIP_HINT in str(exc.value) and "rerun to resume" not in str(exc.value)
     assert len(puts_of(fake)) == 0
     assert fake.issues[other] == original
 
@@ -454,6 +457,7 @@ def test_hand_edited_key_in_another_project_is_refused(tmp_path):
     with pytest.raises(jira_publish.PublishFailed) as exc:
         jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
     assert "jira_key OTHER-5 for EPIC-01 is not in project DEMO" in str(exc.value)
+    assert OWNERSHIP_HINT in str(exc.value) and "rerun to resume" not in str(exc.value)
     assert len(puts_of(fake)) == 0
     assert len(fake.requests) == 0
 
@@ -582,3 +586,63 @@ def test_unexpected_transport_exception_is_one_line_failure(tmp_path, monkeypatc
     err = capsys.readouterr().err
     assert err.startswith("FAILED") and len(err.strip().splitlines()) == 1
     assert "Traceback" not in err and TOKEN not in err
+
+
+# --- search lag and transient wording ---
+
+def test_lost_create_response_waits_the_configured_time_before_the_search(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.lose_response_on_create()
+    sleeps = []
+    jira_publish.publish(str(run), str(write_config(tmp_path, search_wait_seconds=7)),
+                         client=make_client(fake, sleeps))
+    assert sleeps == [7]
+
+
+def test_default_search_wait_is_three_seconds(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.lose_response_on_create()
+    sleeps = []
+    jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake, sleeps))
+    assert sleeps == [3]
+
+
+def test_zero_search_wait_records_no_sleep(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.lose_response_on_create()
+    sleeps = []
+    jira_publish.publish(str(run), str(write_config(tmp_path, search_wait_seconds=0)),
+                         client=make_client(fake, sleeps))
+    assert sleeps == []
+
+
+def test_explicit_sleep_parameter_is_used_instead_of_the_clients(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.lose_response_on_create()
+    client_sleeps, my_sleeps = [], []
+    jira_publish.publish(str(run), str(write_config(tmp_path, search_wait_seconds=2)),
+                         client=make_client(fake, client_sleeps), sleep=my_sleeps.append)
+    assert my_sleeps == [2] and client_sleeps == []
+
+
+def test_negative_search_wait_is_refused_before_any_request(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    with pytest.raises(ValueError, match="search_wait_seconds"):
+        jira_publish.publish(str(run), str(write_config(tmp_path, search_wait_seconds=-1)),
+                             client=make_client(fake))
+    assert len(fake.requests) == 0
+
+
+def test_transient_400_on_create_still_says_rerun_to_resume(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.fail_on_request(2, 400)  # search is request 1, the first create is request 2
+    with pytest.raises(jira_publish.PublishFailed) as exc:
+        jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
+    assert "FAILED at EPIC-01" in str(exc.value)
+    assert "0 published before the failure; rerun to resume" in str(exc.value)

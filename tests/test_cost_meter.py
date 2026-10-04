@@ -339,3 +339,46 @@ def test_pricing_schema_rejects_negative_and_unknown_keys():
     base["pricing"]["small"]["input_per_mtok"] = 1
     base["pricing"]["huge"] = base["pricing"]["small"]
     assert list(validator.iter_errors(base))
+
+
+def test_log_entry_does_not_write_through_a_symlink(tmp_path):
+    run = make_run(make_project(tmp_path / "project"))
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"keep me\n")
+    (run / "cost.log.jsonl").symlink_to(outside)
+    entry = cost_meter.log_entry(run, str(TRANSCRIPTS / "normal.jsonl"), "x", "agent-1", CONFIG)
+    assert entry is None
+    assert outside.read_bytes() == b"keep me\n"
+
+
+def test_cli_log_with_symlinked_log_exits_0_and_leaves_target_alone(tmp_path):
+    project = make_project(tmp_path / "project")
+    run = make_run(project)
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"keep me\n")
+    (run / "cost.log.jsonl").symlink_to(outside)
+    result = run_meter(project, "log", str(run), "--transcript", str(TRANSCRIPTS / "normal.jsonl"),
+                       "--agent-type", "x")
+    assert result.returncode == 0
+    assert outside.read_bytes() == b"keep me\n"
+    assert result.stdout.strip() == "Skipped: cost log is a symlink"
+
+
+def test_warn_and_stop_mention_unparsed_entries_not_counted(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project)
+    write_log(run, [_entry("stage1", None), _entry("stage1", 2.5)])
+    result = run_meter(project, "check", str(run))
+    assert result.returncode == 0
+    assert result.stdout.strip() == "WARN: stage1 at 83% of budget (1 unparsed entries not counted)"
+    write_log(run, [_entry("stage1", None), _entry("stage1", 3.5)])
+    result = run_meter(project, "check", str(run))
+    assert result.returncode == 1
+    assert result.stdout.strip() == "STOP: stage1 budget exceeded (3.50 of 3.00) (1 unparsed entries not counted)"
+
+
+def test_warn_without_unparsed_entries_has_no_suffix(tmp_path):
+    project = make_project(tmp_path)
+    run = make_run(project)
+    write_log(run, [_entry("stage1", 2.5)])
+    assert run_meter(project, "check", str(run)).stdout.strip() == "WARN: stage1 at 83% of budget"

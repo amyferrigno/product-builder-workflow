@@ -42,7 +42,7 @@ Write one file: `<run_dir>/tickets.manifest.json`, valid against `schemas/ticket
 
 ### Ticket rules
 
-- One Epic per problem or milestone. Each Epic has a `problem_ref` that exists in `02-problem.md`.
+- One Epic per problem or delivery phase. Each Epic has a `problem_ref` that exists in `02-problem.md`.
 - Stories are vertical slices: each one delivers user value on its own (INVEST). Never split by layer (no "build the API" or "build the UI" stories).
 - Tasks are for instrumentation, eval, data and design handoff. Set `task_kind` on every Task.
 - One Spike per blocking open question of the PRD. Set `open_question_ref` on every Spike to the question's text as written in the PRD.

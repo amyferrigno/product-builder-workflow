@@ -49,4 +49,4 @@ make test     # Run pytest
 make eval     # Check every fixture against its expected result
 ```
 
-All tests must pass before shipping a milestone. Schema validation is automatic.
+All tests must pass before shipping. Schema validation is automatic.

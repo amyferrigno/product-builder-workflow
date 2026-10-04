@@ -98,6 +98,8 @@ def main() -> None:
             "next": next_step,
         }
         log = run_dir / "session.log.jsonl"
+        if os.path.islink(log):  # never write through a symlink
+            return
         last = last_entry(log)
         if last is not None and all(last.get(k) == entry[k] for k in ("stage", "status", "next")):
             return

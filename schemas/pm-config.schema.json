@@ -110,7 +110,8 @@
           "additionalProperties": { "type": "string" }
         },
         "min_request_interval_seconds": { "type": "number", "minimum": 0 },
-        "max_retries": { "type": "integer", "minimum": 0 }
+        "max_retries": { "type": "integer", "minimum": 0 },
+        "search_wait_seconds": { "type": "number", "minimum": 0 }
       }
     },
     "ux": {

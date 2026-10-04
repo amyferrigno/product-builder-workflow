@@ -53,7 +53,7 @@ No anecdote provider configured. No anecdote records exist for this run.
 - No evidence that users in general want search beyond the PM's statement and one prospect (P-1, R-1). How to close: count requests for search from support and sales, and ask existing customers how they find past meetings today.
 - How users find past meetings today is not stated. How to close: user interviews, with customer names removed.
 - Which plan levels the prospect's departments use, and how many users are on each, is not stated (U-1). How to close: the Sales Lead and the PM check the prospect's plan mix.
-- No anecdote provider: nothing from customers is captured as a record. How to close: capture interview notes as anecdote records once the anecdote step exists (M4).
+- No anecdote provider: nothing from customers is captured as a record. How to close: capture interview notes as anecdote records once an anecdote provider is configured.
 
 ## 7. Goals and non-goals
 
@@ -178,7 +178,7 @@ Workflow decisions:
 - PB-1 is the primary problem because it is the only problem in the framing, and no problems are parked.
 - The plan-level disagreement (DIS-1) is kept open and is not resolved in this PRD.
 - Section 8 targets are proposals because the notes state none.
-- No evidence or anecdote provider exists in this milestone, so evidence comes only from the meeting (6c).
+- No evidence or anecdote provider is configured for this run, so evidence comes only from the meeting (6c).
 
 ## 20. Traceability
 

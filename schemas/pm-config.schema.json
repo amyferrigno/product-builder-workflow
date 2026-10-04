@@ -82,7 +82,13 @@
           "type": "array",
           "items": { "type": "string" }
         },
-        "custom_fields": { "type": "object" }
+        "custom_fields": { "type": "object" },
+        "issue_types": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "min_request_interval_seconds": { "type": "number", "minimum": 0 },
+        "max_retries": { "type": "integer", "minimum": 0 }
       }
     },
     "ux": {

@@ -10,8 +10,8 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tickets_helpers import make_tickets_run  # noqa: E402
-from ux_gate_helpers import write_state  # noqa: E402
+from tickets_helpers import make_tickets_run
+from ux_gate_helpers import write_state
 
 REPO_ROOT = Path(__file__).parent.parent
 

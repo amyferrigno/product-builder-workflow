@@ -479,7 +479,7 @@ def test_intake_non_utf8_txt():
 
         assert code == 1
         # Should have exactly one line of error
-        stderr_lines = [l for l in stderr.strip().split('\n') if l]
+        stderr_lines = [ln for ln in stderr.strip().split('\n') if ln]
         assert len(stderr_lines) == 1
         assert "Cannot read file" in stderr
         assert "Traceback" not in stderr

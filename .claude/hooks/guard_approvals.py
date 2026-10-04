@@ -215,7 +215,10 @@ def main():
         # Check if this is an approval file path
         if check_approval_path(file_path):
             # Block this write
-            print("Blocked: approval files are written only by scripts/approve.py after a human runs /pm-approve.", file=sys.stderr)
+            print(
+                "Blocked: approval files are written only by scripts/approve.py after a human runs /pm-approve.",
+                file=sys.stderr,
+            )
             sys.exit(2)
 
         # Allow other paths

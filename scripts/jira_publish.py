@@ -20,9 +20,9 @@ import yaml
 from jsonschema import Draft202012Validator
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_approval import approval_status  # noqa: E402
-from traceability import write_traceability  # noqa: E402
-from validate_tickets import validate_tickets  # noqa: E402
+from check_approval import approval_status
+from traceability import write_traceability
+from validate_tickets import validate_tickets
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DRYRUN_NAME = "tickets.dryrun.json"

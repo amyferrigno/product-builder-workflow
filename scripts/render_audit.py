@@ -9,10 +9,10 @@ import sys
 import json
 import hashlib
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import compute_verdict, prd_has_ai_addendum  # noqa: E402
+from audit_verdict import compute_verdict, prd_has_ai_addendum
 
 try:
     import yaml
@@ -262,7 +262,7 @@ def main():
             state["verdicts"] = {}
         state["verdicts"]["prd"] = verdict
 
-        state["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        state["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         # Update status
         if verdict in ("PASS", "PASS_WITH_RISK"):

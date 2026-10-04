@@ -128,7 +128,10 @@ def test_bad_templates_are_refused_with_one_line(tmp_path):
     cases = {
         "{n} tickets": "claim template must contain {value} or {value_pct}",
         "{value} {nope}": "unknown placeholder '{nope}' in claim template",
-        "{value_pct}k tickets": "claim template must not put a magnitude word (k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a number",
+        "{value_pct}k tickets": (
+            "claim template must not put a magnitude word "
+            "(k, m, mn, mm, bn, x, hundred, thousand, million, billion, times) after a number"
+        ),
         "{value}% of tickets": "% may follow only {value_pct}",
     }
     queries = make_queries_dir(tmp_path)

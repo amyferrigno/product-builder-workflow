@@ -10,7 +10,7 @@ import yaml
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
-import eval_fixtures  # noqa: E402
+import eval_fixtures
 
 FIXTURE_NAMES = {
     "clean-meeting", "messy-transcript", "solution-first-chatbot", "contradictory-decisions",

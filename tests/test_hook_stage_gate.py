@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from ux_gate_helpers import approve_prd_file, make_gate_run, sha, ux_hash  # noqa: E402
+from ux_gate_helpers import make_gate_run, sha, ux_hash
 
 REPO_ROOT = Path(__file__).parent.parent
 HOOK = REPO_ROOT / ".claude" / "hooks" / "guard_stage_gate.py"

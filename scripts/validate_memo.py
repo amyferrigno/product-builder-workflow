@@ -13,7 +13,7 @@ from typing import Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import validate_prd as vp  # noqa: E402
+import validate_prd as vp
 
 LIST_MARKER_RE = re.compile(r'^\s*(?:[-*+]|\d+[.)])\s')
 

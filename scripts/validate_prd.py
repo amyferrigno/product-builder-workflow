@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Validate prd.md against structure, consistency and traceability rules.
 Usage: python scripts/validate_prd.py <run_dir>
 
@@ -13,7 +13,7 @@ import sys
 import json
 import re
 from pathlib import Path
-from typing import List, Tuple, Dict, Any, Set, Optional
+from typing import List, Tuple, Dict, Set, Optional
 
 try:
     import yaml

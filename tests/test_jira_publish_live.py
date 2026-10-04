@@ -13,14 +13,14 @@ from jsonschema import Draft202012Validator
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent))
-import jira_client  # noqa: E402
-import jira_publish  # noqa: E402
-from fake_jira import FakeJira  # noqa: E402
-from jira_client import JiraClient  # noqa: E402
-from check_approval import approval_status  # noqa: E402
-from tickets_helpers import make_tickets_run  # noqa: E402
-from ux_gate_helpers import write_state  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
+import jira_client
+import jira_publish
+from fake_jira import FakeJira
+from jira_client import JiraClient
+from check_approval import approval_status
+from tickets_helpers import make_tickets_run
+from ux_gate_helpers import write_state
+from ux_hash import ux_hash
 
 SITE = "https://example.atlassian.net"
 TOKEN = "tok-DISTINCTIVE-9f8e7d6c"

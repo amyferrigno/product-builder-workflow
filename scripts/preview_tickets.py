@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from validate_prd import parse_requirements  # noqa: E402
-from validate_tickets import MANIFEST_NAME, validate_tickets  # noqa: E402
+from validate_prd import parse_requirements
+from validate_tickets import MANIFEST_NAME, validate_tickets
 
 PREVIEW_NAME = "tickets.preview.md"
 

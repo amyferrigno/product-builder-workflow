@@ -5,7 +5,6 @@ import yaml
 from pathlib import Path
 from jsonschema import Draft202012Validator
 
-import sys
 
 
 def load_schema(schema_name):
@@ -73,7 +72,10 @@ def test_invalid_extraction_fails():
         "source_lines" in e.message
         for e in errors
     )
-    assert error_at_problems, f"Expected error at problems.0 containing source_lines, got: {[(e.absolute_path, e.message) for e in errors]}"
+    assert error_at_problems, (
+        f"Expected error at problems.0 containing source_lines, got: "
+        f"{[(e.absolute_path, e.message) for e in errors]}"
+    )
 
 
 def test_valid_evidence_passes():
@@ -104,7 +106,10 @@ def test_invalid_evidence_bad_id_fails():
         e.validator == "pattern"
         for e in errors
     )
-    assert error_at_id, f"Expected error at id with validator pattern, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    assert error_at_id, (
+        f"Expected error at id with validator pattern, got: "
+        f"{[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    )
 
 
 def test_valid_anecdote_passes():
@@ -135,7 +140,10 @@ def test_invalid_anecdote_quote_too_long_fails():
         e.validator == "maxLength"
         for e in errors
     )
-    assert error_at_quote, f"Expected error at quote with validator maxLength, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    assert error_at_quote, (
+        f"Expected error at quote with validator maxLength, got: "
+        f"{[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    )
 
 
 def test_valid_provider_io_input_passes():
@@ -184,7 +192,10 @@ def test_invalid_provider_io_error_missing_fails():
                 "'error' is a required property" in ctx.message
                 for ctx in e.context
             )
-    assert root_error and context_has_error_required, f"Expected oneOf error with 'error' required in context, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    assert root_error and context_has_error_required, (
+        f"Expected oneOf error with 'error' required in context, got: "
+        f"{[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    )
 
 
 def test_valid_ticket_manifest_passes():
@@ -215,7 +226,10 @@ def test_invalid_ticket_manifest_story_points_fails():
         "story_points" in e.message
         for e in errors
     )
-    assert error_at_path, f"Expected error at epics.0.children.0 containing story_points, got: {[(e.absolute_path, e.message) for e in errors]}"
+    assert error_at_path, (
+        f"Expected error at epics.0.children.0 containing story_points, got: "
+        f"{[(e.absolute_path, e.message) for e in errors]}"
+    )
 
 
 def test_valid_state_passes():
@@ -246,7 +260,10 @@ def test_invalid_state_bad_stage_fails():
         e.validator == "enum"
         for e in errors
     )
-    assert error_at_stage, f"Expected error at stage with validator enum, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    assert error_at_stage, (
+        f"Expected error at stage with validator enum, got: "
+        f"{[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    )
 
 
 def test_valid_pm_config_passes():
@@ -277,7 +294,10 @@ def test_invalid_pm_config_bad_jira_mode_fails():
         e.validator == "enum"
         for e in errors
     )
-    assert error_at_jira_mode, f"Expected error at jira.mode with validator enum, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    assert error_at_jira_mode, (
+        f"Expected error at jira.mode with validator enum, got: "
+        f"{[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    )
 
 
 def test_valid_registry_passes():
@@ -308,7 +328,10 @@ def test_invalid_registry_mcp_no_server_fails():
         "'server' is a required property" in e.message
         for e in errors
     )
-    assert error_at_providers, f"Expected error at providers.0 containing 'server' required, got: {[(e.absolute_path, e.message) for e in errors]}"
+    assert error_at_providers, (
+        f"Expected error at providers.0 containing 'server' required, got: "
+        f"{[(e.absolute_path, e.message) for e in errors]}"
+    )
 
 
 def test_valid_prd_audit_passes():
@@ -339,7 +362,10 @@ def test_invalid_prd_audit_no_fix_fails():
         ("'fix' is a required property" in e.message or "'sections' is a required property" in e.message)
         for e in errors
     )
-    assert error_at_dim, f"Expected error at dimensions.0 with fix/sections required, got: {[(e.absolute_path, e.message) for e in errors]}"
+    assert error_at_dim, (
+        f"Expected error at dimensions.0 with fix/sections required, got: "
+        f"{[(e.absolute_path, e.message) for e in errors]}"
+    )
 
 
 def test_valid_state_with_audit_loops_passes():
@@ -370,7 +396,10 @@ def test_invalid_state_audit_loops_negative_fails():
         e.validator == "minimum"
         for e in errors
     )
-    assert error_at_prd, f"Expected error at audit_loops.prd with validator minimum, got: {[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    assert error_at_prd, (
+        f"Expected error at audit_loops.prd with validator minimum, got: "
+        f"{[(e.absolute_path, e.validator, e.message) for e in errors]}"
+    )
 
 
 def test_prd_audit_rubric_is_valid():
@@ -418,12 +447,16 @@ def test_prd_audit_rubric_is_valid():
         "ai_ux_uncertainty",
         "ai_eval_plan"
     }
-    assert blocking_ids == expected_blocking, f"Blocking dimensions mismatch. Expected {expected_blocking}, got {blocking_ids}"
+    assert blocking_ids == expected_blocking, (
+        f"Blocking dimensions mismatch. Expected {expected_blocking}, got {blocking_ids}"
+    )
 
     # Check blocking dimensions have minimum 3
     for dim in dimensions:
         if dim.get("blocking"):
-            assert dim.get("minimum") == 3, f"Blocking dimension {dim.get('id')} should have minimum 3, got {dim.get('minimum')}"
+            assert dim.get("minimum") == 3, (
+                f"Blocking dimension {dim.get('id')} should have minimum 3, got {dim.get('minimum')}"
+            )
 
     # Check each dimension has score definitions for 1-4
     for dim in dimensions:

@@ -199,7 +199,10 @@ def test_render_audit_with_fixes_section():
             "ai_feature": False,
             "dimensions": [
                 {"id": "problem_clarity", "score": 3, "justification": "Clear"},
-                {"id": "evidence_strength", "score": 2, "justification": "Weak", "fix": "Add more data", "sections": ["6a"]},
+                {
+                    "id": "evidence_strength", "score": 2, "justification": "Weak", "fix": "Add more data",
+                    "sections": ["6a"],
+                },
                 {"id": "strategic_fit", "score": 3, "justification": "Aligned"},
                 {"id": "success_metrics", "score": 3, "justification": "Defined"},
                 {"id": "scope_discipline", "score": 3, "justification": "Tight"},
@@ -216,7 +219,7 @@ def test_render_audit_with_fixes_section():
             json.dump(audit, f)
 
         # Run render_audit
-        result = subprocess.run(
+        subprocess.run(
             [sys.executable, "scripts/render_audit.py", str(run_dir)],
             capture_output=True,
             cwd=repo_root

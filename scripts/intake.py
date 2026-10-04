@@ -12,7 +12,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 import re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 
@@ -96,7 +96,7 @@ def number_lines(content: str) -> str:
 
 
 def validate_slug(slug: str) -> bool:
-    """Validate that slug matches ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase letters and digits separated by single hyphens)."""
+    """Validate that slug matches ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase letters and digits separated by hyphens)."""
     return bool(re.match(r'^[a-z0-9]+(-[a-z0-9]+)*$', slug))
 
 
@@ -146,7 +146,7 @@ def create_state_json(run_id: str, notes_hash: str) -> Dict[str, Any]:
             "tickets": None
         },
         "jira_keys": {},
-        "updated_at": datetime.utcnow().isoformat() + "Z"
+        "updated_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
     }
 
 
@@ -240,7 +240,11 @@ def main():
 
     # Validate slug format
     if not validate_slug(slug):
-        print("Error: slug must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase letters and digits separated by single hyphens)", file=sys.stderr)
+        print(
+            "Error: slug must match ^[a-z0-9]+(-[a-z0-9]+)*$ "
+            "(lowercase letters and digits separated by single hyphens)",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Create run ID and directory

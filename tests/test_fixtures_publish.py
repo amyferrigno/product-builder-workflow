@@ -11,11 +11,11 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import jira_publish  # noqa: E402
-from check_approval import approval_status  # noqa: E402
-from fake_jira import FakeJira  # noqa: E402
-from jira_client import JiraClient  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
+import jira_publish
+from check_approval import approval_status
+from fake_jira import FakeJira
+from jira_client import JiraClient
+from ux_hash import ux_hash
 
 GOLDEN = REPO / "fixtures" / "ai-clear-fit" / "golden"
 SITE = "https://example.atlassian.net"

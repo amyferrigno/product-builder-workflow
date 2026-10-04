@@ -405,7 +405,7 @@ def test_library_queries_pass_the_guard():
 
 # --- The database enforces read-only and PII rules (sqlite authorizer) ---
 sys.path.insert(0, str(REPO_ROOT / "connectors" / "providers"))
-import mock_warehouse  # noqa: E402
+import mock_warehouse
 
 NOT_AUTHORIZED = "query not authorized: reads a PII column or is not read-only"
 PERSONAL_VALUES = ("example.invalid", "Test Person", "+00")

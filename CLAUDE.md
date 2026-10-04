@@ -46,6 +46,7 @@ Only a human runs `/pm-approve`. The verdict comes from `scripts/render_audit.py
 ```bash
 make setup    # Create .venv and install dependencies (Python 3.9+)
 make test     # Run pytest
+make lint     # Run ruff
 make eval     # Check every fixture against its expected result
 ```
 

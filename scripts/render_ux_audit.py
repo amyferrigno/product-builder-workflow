@@ -7,14 +7,14 @@ Usage: python scripts/render_ux_audit.py <run_dir>
 
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import prd_has_ai_addendum  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
-from ux_verdict import REPO_ROOT, compute_ux_verdict, load_ux_audit_schema, load_ux_rubric  # noqa: E402
-from validate_ux import validate_ux  # noqa: E402
+from audit_verdict import prd_has_ai_addendum
+from ux_hash import ux_hash
+from ux_verdict import REPO_ROOT, compute_ux_verdict, load_ux_audit_schema, load_ux_rubric
+from validate_ux import validate_ux
 
 try:
     from jsonschema import Draft202012Validator
@@ -114,7 +114,7 @@ def main() -> None:
         loops["ux"] = int(loops.get("ux", 0)) + 1
         state["stage"] = "stage2"
         state["status"] = "awaiting_approval" if verdict in ("PASS", "PASS_WITH_RISK") else "failed"
-        state["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        state["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         state_schema = json.loads((REPO_ROOT / "schemas" / "state.schema.json").read_text(encoding="utf-8"))
         state_errors = list(Draft202012Validator(state_schema).iter_errors(state))

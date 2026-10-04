@@ -24,13 +24,13 @@ from typing import List
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent))
-from validate_prd import (  # noqa: E402
+from validate_prd import (
     extract_problem_ids,
     parse_problem_md_front_matter,
     parse_requirements,
 )
-from ux_gate_helpers import approve_prd_file, make_gate_run, sha  # noqa: E402
-from ux_hash import ux_hash  # noqa: E402
+from ux_gate_helpers import approve_prd_file, make_gate_run, sha
+from ux_hash import ux_hash
 
 MANIFEST_NAME = "tickets.manifest.json"
 

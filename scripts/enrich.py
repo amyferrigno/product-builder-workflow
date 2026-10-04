@@ -26,7 +26,8 @@ Ad-hoc (--sql): guarded by sql_guard first, sent to the provider as query_id adh
 with the SQL text in params["__sql"], saved to the library as status unreviewed, confidence low.
 --value-field / --n-field pick the columns for ad-hoc queries (default: first column, and the
 provider's row count).
-Prints {"id", "path", "value", "n", "claim", "confidence"} as JSON on success; errors go to stderr, one per line, exit 1.
+Prints {"id", "path", "value", "n", "claim", "confidence"} as JSON on success; errors go to stderr, one per line,
+exit 1.
 """
 
 import os

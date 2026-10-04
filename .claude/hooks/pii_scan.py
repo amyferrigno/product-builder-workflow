@@ -51,7 +51,9 @@ def main():
         if not is_watched(file_path, project_dir):
             sys.exit(0)
 
-        target = Path(os.path.normpath(str(Path(project_dir) / file_path if not Path(file_path).is_absolute() else file_path)))
+        target = Path(os.path.normpath(
+            str(Path(project_dir) / file_path if not Path(file_path).is_absolute() else file_path)
+        ))
         if not target.is_file():
             sys.exit(0)
 

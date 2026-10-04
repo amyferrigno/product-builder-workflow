@@ -546,20 +546,20 @@ def test_gate_summary_on_golden_fixture(name: str, tmp_path: Path):
     # Scope: first in-v1 item and first out-of-v1 item appear verbatim
     scope = _md_section(prd, "## 13. MVP scope")
     in_part, out_part = scope.split("### Out of v1")
-    first_in = next(l[2:].strip() for l in in_part.splitlines() if l.startswith("- "))
-    first_out = next(l[2:].strip() for l in out_part.splitlines() if l.startswith("- "))
+    first_in = next(ln[2:].strip() for ln in in_part.splitlines() if ln.startswith("- "))
+    first_out = next(ln[2:].strip() for ln in out_part.splitlines() if ln.startswith("- "))
     assert first_in in stdout
     assert first_out in stdout
 
     # Primary metric: ID present, no markdown bold
-    metric_line = next(l for l in lines if l.startswith("Primary metric:"))
+    metric_line = next(ln for ln in lines if ln.startswith("Primary metric:"))
     assert "MET-001" in metric_line
     assert "**" not in metric_line
     assert "not available" not in metric_line
 
     # Fixed lines and size
     assert "Cost: no cost data" in lines
-    next_line = next(l for l in lines if l.startswith("Next step:"))
+    next_line = next(ln for ln in lines if ln.startswith("Next step:"))
     if expected["prd"]["verdict"] in ("PASS", "PASS_WITH_RISK"):
         assert "/pm-approve prd " in next_line
         assert "<run-id>" not in next_line
@@ -568,9 +568,9 @@ def test_gate_summary_on_golden_fixture(name: str, tmp_path: Path):
     assert len(lines) < 45
 
     # No "not available" for problem, verdict, scope or metric
-    for l in lines:
-        if l.startswith(("Problem:", "Audit Verdict:", "Primary metric:")):
-            assert "not available" not in l
+    for ln in lines:
+        if ln.startswith(("Problem:", "Audit Verdict:", "Primary metric:")):
+            assert "not available" not in ln
     assert "  not available" not in lines[lines.index("MVP Scope (in):") + 1]
     assert "  not available" not in lines[lines.index("MVP Scope (out):") + 1]
 
@@ -602,7 +602,7 @@ def test_gate_summary_open_questions_from_table():
 
 
 def _next_step_line(stdout: str) -> str:
-    return next(l for l in stdout.splitlines() if l.startswith("Next step:"))
+    return next(ln for ln in stdout.splitlines() if ln.startswith("Next step:"))
 
 
 def _set_verdict(run_dir: str, verdict) -> None:

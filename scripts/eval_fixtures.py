@@ -20,17 +20,17 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import audit_verdict  # noqa: E402
-import prd_decision  # noqa: E402
-import ux_verdict  # noqa: E402
-import validate_anecdotes  # noqa: E402
-import validate_evidence  # noqa: E402
-import validate_extraction  # noqa: E402
-import validate_memo  # noqa: E402
-import validate_prd  # noqa: E402
-import validate_problem  # noqa: E402
-import validate_tickets  # noqa: E402
-import validate_ux  # noqa: E402
+import audit_verdict
+import prd_decision
+import ux_verdict
+import validate_anecdotes
+import validate_evidence
+import validate_extraction
+import validate_memo
+import validate_prd
+import validate_problem
+import validate_tickets
+import validate_ux
 
 RUN_DATE = "2026-01-15"
 MAX_ERROR_LINES = 10

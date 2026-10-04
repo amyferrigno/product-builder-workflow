@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_verdict import prd_has_ai_addendum  # noqa: E402
-from validate_prd import parse_requirements, remove_html_comments  # noqa: E402
+from audit_verdict import prd_has_ai_addendum
+from validate_prd import parse_requirements, remove_html_comments
 
 try:
     import yaml
@@ -419,7 +419,9 @@ def validate_ux(
         errors.append("screens/: no screen files found")
     for i, number in enumerate(sorted(numbers), start=1):
         if number != i:
-            errors.append(f"screens/: ids must run SCR-001.. with no gaps; expected SCR-{i:03d}, found SCR-{number:03d}")
+            errors.append(
+                f"screens/: ids must run SCR-001.. with no gaps; expected SCR-{i:03d}, found SCR-{number:03d}"
+            )
             break
 
     errors.extend(check_index(ux_dir, screen_names, screen_states, required))

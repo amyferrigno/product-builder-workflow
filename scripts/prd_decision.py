@@ -18,7 +18,7 @@ import jsonschema
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import validate_prd as vp  # noqa: E402
+import validate_prd as vp
 
 SCHEMAS = Path(__file__).resolve().parent.parent / "schemas"
 STATE_SCHEMA = SCHEMAS / "state.schema.json"

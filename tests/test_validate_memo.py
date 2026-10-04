@@ -11,7 +11,7 @@ import pytest
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from validate_memo import MEMO_HEADINGS, validate_memo  # noqa: E402
+from validate_memo import MEMO_HEADINGS, validate_memo
 
 FIXTURE = "solution-first-chatbot"
 GOLDEN_MEMO = REPO_ROOT / "fixtures" / FIXTURE / "golden" / "no-prd-memo.md"

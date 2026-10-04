@@ -29,8 +29,11 @@ flowchart TD
 ```bash
 make setup    # create .venv and install dependencies (Python 3.9+)
 make test     # run the test suite
+make lint     # check the code with ruff
 make eval     # check every fixture end to end against its expected result
 ```
+
+CI (`.github/workflows/ci.yml`) runs `make setup`, `make lint`, `make test` and `make eval` on every push and pull request.
 
 Tip: the test suite takes a couple of minutes. On a laptop, run `caffeinate -i make test` so the machine does not sleep.
 

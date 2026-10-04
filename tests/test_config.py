@@ -102,3 +102,37 @@ def test_pm_config_has_anecdotes_allow_company_names():
     assert "anecdotes" in config, "anecdotes section is missing"
     assert "allow_company_names" in config["anecdotes"], "anecdotes.allow_company_names is missing"
     assert config["anecdotes"]["allow_company_names"] is False, "allow_company_names should be false"
+
+
+def test_pm_config_new_jira_fields_validate():
+    """A config with the optional jira retry and issue type fields validates."""
+    schema = load_schema("pm-config")
+    config = load_config_yaml("pm.config.yaml")
+    config["jira"]["issue_types"] = {"Epic": "Epic", "Story": "Story", "Task": "Task", "Spike": "Task"}
+    config["jira"]["min_request_interval_seconds"] = 0.2
+    config["jira"]["max_retries"] = 5
+    errors = list(Draft202012Validator(schema).iter_errors(config))
+    assert errors == [], [e.message for e in errors]
+
+
+def test_pm_config_new_jira_fields_wrong_type_rejected():
+    """Wrong types for the new jira fields are rejected."""
+    schema = load_schema("pm-config")
+    validator = Draft202012Validator(schema)
+    bad_values = {
+        "issue_types": "Epic",
+        "min_request_interval_seconds": "fast",
+        "max_retries": 2.5,
+    }
+    for field, value in bad_values.items():
+        config = load_config_yaml("pm.config.yaml")
+        config["jira"][field] = value
+        assert list(validator.iter_errors(config)), f"{field}={value!r} should be rejected"
+
+
+def test_pm_config_still_dry_run_with_new_fields_absent():
+    """The repo config keeps dry_run and does not set the new optional fields."""
+    config = load_config_yaml("pm.config.yaml")
+    assert config["jira"]["mode"] == "dry_run"
+    for field in ("issue_types", "min_request_interval_seconds", "max_retries"):
+        assert field not in config["jira"]

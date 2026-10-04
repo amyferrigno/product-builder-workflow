@@ -2,9 +2,11 @@
 """
 PreToolUse hook: early warning against writing to Jira outside the approved path.
 Blocks (exit 2):
-  - a Jira/Atlassian MCP write tool while jira.mode is dry_run (or unreadable)
+  - a Jira/Atlassian MCP write tool, in every mode (only jira_publish.py may write to Jira)
   - a Bash call to atlassian.net with curl, wget or http
   - a Bash call to jira_publish.py for a run whose tickets approval is not valid
+Asks a human (prints an "ask" decision, exit 0) when jira_publish.py runs with --publish
+and the approval is valid.
 The real control is jira_publish.py itself. Exit 0 if allowed, exit 2 if blocked.
 """
 
@@ -74,6 +76,7 @@ def publish_run_dirs(command: str):
         if not (i == 0 or prev in SEPARATORS or base_prev.startswith("python")):
             continue  # e.g. "cat scripts/jira_publish.py" does not run it
         run_dir = None
+        live = False
         j = i + 1
         while j < len(tokens) and tokens[j] not in SEPARATORS:
             arg = tokens[j]
@@ -81,11 +84,14 @@ def publish_run_dirs(command: str):
                 j += 2
                 continue
             if arg.startswith("-"):
+                if arg == "--publish":
+                    live = True
                 j += 1
                 continue
-            run_dir = arg
-            break
-        found.append(run_dir)
+            if run_dir is None:
+                run_dir = arg
+            j += 1
+        found.append((run_dir, live))
     return found
 
 
@@ -100,13 +106,12 @@ def check_mcp(tool_name: str, project_dir: str):
     # Anything that is neither allowlisted nor read-prefixed is treated as a write.
     if action.startswith(READ_PREFIXES) and not any(verb in action for verb in WRITE_VERBS):
         return
-    if read_jira_mode(project_dir) == "dry_run":
-        print(
-            "Blocked: Jira is in dry-run mode, so Jira write tools are not allowed. "
-            "Publishing to Jira arrives in M7. Use scripts/jira_publish.py for the dry-run payloads.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+    print(
+        "Blocked: only scripts/jira_publish.py may write to Jira. "
+        "Jira write tools are blocked in every mode.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 
 def check_bash(command: str, project_dir: str):
@@ -114,12 +119,13 @@ def check_bash(command: str, project_dir: str):
     if "atlassian.net" in lowered and any(w in lowered for w in ("curl", "wget", "http")):
         print(
             "Blocked: direct calls to atlassian.net are not allowed. "
-            "Jira is in dry-run mode; publishing arrives in M7.",
+            "Only scripts/jira_publish.py may write to Jira.",
             file=sys.stderr,
         )
         sys.exit(2)
 
-    for run_arg in publish_run_dirs(command):
+    ask_for = []
+    for run_arg, live in publish_run_dirs(command):
         if run_arg is None:
             print(
                 "Blocked: jira_publish.py needs a run directory argument so the tickets "
@@ -139,6 +145,18 @@ def check_bash(command: str, project_dir: str):
                 file=sys.stderr,
             )
             sys.exit(2)
+        if live:
+            ask_for.append(run_dir.name)
+
+    if ask_for:
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": f"Live Jira publish for {ask_for[0]}: a human must confirm",
+            }
+        }))
+        sys.exit(0)
 
 
 def main():

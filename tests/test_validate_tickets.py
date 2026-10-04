@@ -124,8 +124,10 @@ CASES = [
     ("rule11-unknown-block", lambda m: story(m).update(blocks=["T-999"]), ("T-001", "T-999"), False),
     ("rule11-self-block", lambda m: story(m).update(blocks=["T-001"]), ("T-001", "itself"), False),
     ("rule11-cycle", _spike_cycle, ("cycle",), False),
-    ("rule12-child-jira-key", lambda m: story(m).update(jira_key="PROJ-1"), ("T-001", "jira_key"), False),
-    ("rule12-epic-jira-key", lambda m: m["epics"][0].update(jira_key="PROJ-9"), ("EPIC-01", "jira_key"), False),
+    ("rule12-child-jira-key", lambda m: story(m).update(jira_key="demo-12"), ("T-001", "jira_key"), False),
+    ("rule12-epic-jira-key", lambda m: m["epics"][0].update(jira_key="DEMO-0"), ("EPIC-01", "jira_key"), False),
+    ("rule12-no-dash", lambda m: story(m).update(jira_key="DEMO12"), ("T-001", "jira_key"), False),
+    ("rule12-empty", lambda m: story(m).update(jira_key=""), ("T-001", "jira_key"), False),
 ]
 
 
@@ -168,3 +170,13 @@ def test_cli_exit_codes_and_no_traceback(tmp_path):
     bad = subprocess.run([sys.executable, "scripts/validate_tickets.py", str(run)],
                          capture_output=True, text=True, cwd=REPO_ROOT)
     assert bad.returncode == 1 and "T-001" in bad.stdout and "Traceback" not in bad.stderr
+
+
+def test_rule12_accepts_null_and_valid_keys(tmp_path):
+    run = make_tickets_run(tmp_path)
+    manifest = valid_manifest(run, False)
+    assert validate_tickets(run) == []
+    story(manifest).update(jira_key="DEMO-12")
+    manifest["epics"][0].update(jira_key="A_B1-3")
+    write_manifest(run, manifest)
+    assert validate_tickets(run) == []

@@ -68,3 +68,16 @@ def test_jira_column_without_manifest_is_unchanged(tmp_path):
     (run / "tickets.manifest.json").unlink()
     text = build_traceability(run)
     assert "| REQ-001 | Must | SCR-001, SCR-002 | not yet created (Stage 3) |" in text
+
+
+def test_jira_column_shows_key_when_published(tmp_path):
+    import json
+    from tickets_helpers import make_tickets_run
+    run = make_tickets_run(tmp_path)
+    manifest = json.loads((run / "tickets.manifest.json").read_text())
+    manifest["epics"][0]["children"][0]["jira_key"] = "DEMO-3"
+    (run / "tickets.manifest.json").write_text(json.dumps(manifest))
+    text = build_traceability(run)
+    assert "| REQ-001 | Must | SCR-001, SCR-002 | DEMO-3 |" in text
+    assert "T-001 (not yet published)" not in text
+    assert "(not yet published)" in text  # tickets without a key keep the suffix

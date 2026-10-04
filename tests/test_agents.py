@@ -386,6 +386,36 @@ def test_prd_to_tickets_skill_exists_and_stays_human_gated():
     assert "/pm-approve tickets <run-id>" in body
 
 
+# --- M7: jira-publisher, jira-publish skill ---
+def test_jira_publisher_front_matter_and_tier():
+    fm = parse_agent_file(REPO / ".claude" / "agents" / "jira-publisher.md")
+    assert fm["name"] == "jira-publisher"
+    assert fm["description"]
+    assert fm["model"] == _tier_model("jira_publisher") == "haiku"
+    assert {t.strip() for t in fm["tools"].split(",")} == {"Read", "Bash"}
+
+
+def test_jira_publisher_rules():
+    body = (REPO / ".claude" / "agents" / "jira-publisher.md").read_text()
+    assert "scripts/jira_publish.py <run_dir> --publish" in body
+    assert "Never call a Jira MCP tool" in body
+    assert "Never run `scripts/approve.py`" in body
+
+
+def test_jira_publish_skill_is_human_only_and_small():
+    path = REPO / ".claude" / "skills" / "jira-publish" / "SKILL.md"
+    assert path.exists(), "jira-publish SKILL.md not found"
+    fm = parse_agent_file(path)
+    assert fm["name"] == "jira-publish"
+    assert fm["description"]
+    assert fm["disable-model-invocation"] is True
+    body = path.read_text()
+    assert len(body.splitlines()) < 200
+    assert "/pm-publish <run-id>" in body
+    assert "scripts/check_approval.py runs/<run-id> tickets" in body
+    assert "--publish" in body
+
+
 def test_pm_approve_covers_tickets_and_stays_human_only():
     path = REPO / ".claude" / "skills" / "pm-approve" / "SKILL.md"
     fm = parse_agent_file(path)

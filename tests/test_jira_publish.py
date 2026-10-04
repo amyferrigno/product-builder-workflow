@@ -168,16 +168,28 @@ def test_running_twice_is_byte_identical(tmp_path):
     assert (run / "tickets.dryrun.json").read_bytes() == first
 
 
-def test_module_imports_no_network_library():
+def test_module_level_imports_no_client_or_network_library():
     tree = ast.parse((REPO_ROOT / "scripts" / "jira_publish.py").read_text())
-    banned = {"urllib", "http", "socket", "requests", "subprocess"}
+    banned = {"jira_client", "urllib", "http", "socket", "requests", "subprocess"}
     found = set()
-    for node in ast.walk(tree):
+    for node in tree.body:  # module level only; the live branch imports jira_client inside publish()
         if isinstance(node, ast.Import):
             found.update(a.name.split(".")[0] for a in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             found.add(node.module.split(".")[0])
-        elif isinstance(node, ast.Call) and getattr(node.func, "id", "") == "__import__":
-            found.add("__import__")
     assert not (found & banned)
-    assert "__import__" not in found
+    assert not any(
+        isinstance(n, ast.Call) and getattr(n.func, "id", "") == "__import__" for n in ast.walk(tree)
+    )
+
+
+def test_dry_run_does_not_import_the_jira_client(tmp_path, monkeypatch, capsys):
+    run = approved_run(tmp_path)
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import jira_publish
+
+    monkeypatch.delitem(sys.modules, "jira_client", raising=False)
+    monkeypatch.setattr(sys, "argv", ["jira_publish.py", str(run), "--config", str(write_config(tmp_path))])
+    jira_publish.main()
+    assert "DRY RUN: nothing was sent to Jira" in capsys.readouterr().out
+    assert "jira_client" not in sys.modules

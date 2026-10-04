@@ -46,7 +46,7 @@ Exit 1 prints one error per line, each starting with a ticket id. Read `audit.ma
 
 Never exceed the maximum. If errors remain after the last allowed loop, set `status` to `"escalated"` in `state.json`, show the remaining errors to the human and stop.
 
-Checks include: schema, ids and labels, summary format and length, no placeholder text, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events from the spec, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle, and every `jira_key` null.
+Checks include: schema, ids and labels, summary format and length, no placeholder text, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events from the spec, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle, and every `jira_key` null before publishing (after a live publish they hold the Jira keys).
 
 ### Step 5: Preview and Human Gate C
 
@@ -68,6 +68,8 @@ Run this only when `check_approval.py runs/<run-id> tickets` printed "approved":
 ```
 
 In this version it is a dry run. It writes `runs/<run-id>/tickets.dryrun.json` (the exact Jira payloads, epics first) and prints one line per ticket. Nothing is sent to Jira. Report the summary lines to the human in plain words. The model never calls a Jira tool.
+
+To publish for real after the dry run, the human runs `/pm-publish <run-id>` (skill `jira-publish`). This skill never publishes.
 
 ## Errors
 

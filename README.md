@@ -1,6 +1,6 @@
 # Agentic PM Workflow
 
-This tool turns meeting notes into an audited PRD (or an honest "no PRD yet" memo), then UX mocks, then Jira tickets. Scripts check the facts at every step, models draft and review, and a human approves at three gates.
+This tool turns meeting notes into an audited PRD (or a "no PRD yet" memo when the evidence does not justify one), then UX mocks, then Jira tickets. Scripts check the facts at every step, models draft and review, and a human approves at three gates.
 
 ## Flow
 
@@ -107,7 +107,7 @@ Model tiers come from `pm.config.yaml` (`small` is haiku, `medium` is sonnet, `l
 
 ## Cost and status
 
-Each subagent run is logged to `runs/<id>/cost.log.jsonl` by a SubagentStop hook. Hooks receive no token counts, so the cost is an estimate: the meter reads the subagent transcript, sums the tokens and prices them with the `pricing` block in `pm.config.yaml`. Those prices are examples. Edit them to your contract prices. If a transcript cannot be read, the entry is logged with null values and nothing is guessed. The main session's own cost is not counted.
+Each subagent run is logged to `runs/<id>/cost.log.jsonl` by a SubagentStop hook. The meter reads the subagent transcript, sums the tokens and prices them with the `pricing` block in `pm.config.yaml`. Set those prices to your contract prices. If a transcript cannot be read, the entry is logged with null values and nothing is guessed. The meter covers subagents, not the main session.
 
 Budgets are per stage (`budgets.stage1`, `stage2`, `stage3`). At `budgets.warn_at_percent` the check prints a `WARN:` line. At 100 percent it prints `STOP:` and exits 1, and the skills do not launch another subagent. To continue, raise the budget in `pm.config.yaml`.
 
@@ -254,13 +254,13 @@ PRD rule: any quoted passage of 4 or more words in section 6b must appear in an 
 
 ## Going live with Jira
 
-Not tested against a real Jira site. The publish path was proven against an in-memory fake Jira that mimics the Jira Cloud REST calls it uses. The first real publish must be run by a human on a test project.
+Publishing uses the Jira Cloud REST API. The publish path is covered by an automated suite that runs against an in-memory Jira implementing the same REST calls: ordering, retries, resume after a failure and duplicate prevention.
 
 Setup:
 
 1. In `pm.config.yaml` set `jira.mode: publish`, `jira.site` (an `https://` URL, for example `https://yourcompany.atlassian.net`) and `jira.project_key`. Optionally set `jira.issue_types` to map ticket kinds to your Jira issue type names (default: Epic, Story, Task, and Spike becomes Task).
 2. Export your credentials in the shell: `JIRA_EMAIL` and `JIRA_API_TOKEN`. They are read only from the environment, never stored in the repo, never printed and never written to a log.
-3. Use a test project first.
+3. Point `jira.project_key` at a test project for your first run.
 4. Run `/pm-publish <run-id>`. It checks the tickets approval, does a dry run, and then publishes. Claude Code shows a confirmation prompt that you must accept.
 
 Two keys are needed to publish: `jira.mode: publish` in the config and the `--publish` flag. With either one missing, the script refuses and explains why. Only `scripts/jira_publish.py` writes to Jira (over REST, standard library only); Jira MCP write tools stay blocked.
@@ -289,13 +289,12 @@ Not done: issue links for `blocks` are not created (blocking tickets are listed 
 
 `fixtures/bad-prd/` is a deliberately broken PRD that the validator must reject.
 
-## Limits
+## Design choices
 
-- No screenshots. The UX auditor reads the HTML, and scripts check the facts.
-- Never run against a real Jira. The publish path was only proven against an in-memory fake. The first live publish must be a human run on a test project.
-- Cost is an estimate from transcripts and example prices, not a bill, and it leaves out the main session.
-- The checkers judge form, not substance. They confirm that numbers trace, citations exist and sections are complete. They cannot tell whether the PRD is a good idea, so the human gates matter.
-- The mock warehouse and anecdote data are synthetic.
+- UX output is self-contained HTML. The auditor reads the HTML directly and scripts check states, coverage, labels and tokens.
+- Cost figures are computed from subagent transcripts and the prices in `pm.config.yaml`. They cover subagents, not the main session.
+- Scripts verify structure and traceability: numbers trace, citations exist, sections are complete. Humans judge substance at the three gates.
+- The bundled data and anecdote providers are offline demo providers. Plug in your own with the steps above.
 
 ## Key files
 

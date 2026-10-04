@@ -4,8 +4,8 @@ Validate runs/<id>/tickets.manifest.json against the Definition of Ready.
 Usage: python scripts/validate_tickets.py <run_dir>
 
 Checks the schema, ids, labels, summaries, descriptions, acceptance criteria,
-REQ / screen / event / problem links, Must coverage, blocks cycles and that no
-jira_key is set yet. Every error starts with the ticket id.
+REQ / screen / event / problem links, Must coverage, blocks cycles and that every
+jira_key is null or a valid Jira key. Every error starts with the ticket id.
 One error per line; exit 0 when clean, 1 otherwise. Never a traceback.
 """
 
@@ -35,6 +35,7 @@ EPIC_ID_RE = re.compile(r'^EPIC-\d{2}$')
 CHILD_ID_RE = re.compile(r'^T-\d{3}$')
 SUMMARY_RE = re.compile(r'^\[[^\]]+\] [A-Z][a-z]+ \S')
 LABEL_RE = re.compile(r'^[a-z0-9][a-z0-9._-]*\Z')
+JIRA_KEY_RE = re.compile(r'^[A-Z][A-Z0-9_]*-[1-9][0-9]*\Z')
 BANNED_RE = re.compile(r'TODO|TBD|\[\[|lorem', re.IGNORECASE)
 PRIORITIES = ("Highest", "High", "Medium", "Low")
 MAX_SUMMARY = 80
@@ -127,8 +128,9 @@ def _check_common(tid: str, ticket: dict, prd_slug: str, ai: bool) -> List[str]:
         errors.append(f"{tid}: missing label 'ai-feature' (the PRD has an AI addendum)")
     if not ai and "ai-feature" in labels:
         errors.append(f"{tid}: label 'ai-feature' not allowed (the PRD has no AI addendum)")
-    if ticket.get("jira_key") is not None:
-        errors.append(f"{tid}: jira_key must be null (nothing is published in M6)")
+    key = ticket.get("jira_key")
+    if key is not None and not (isinstance(key, str) and JIRA_KEY_RE.match(key)):
+        errors.append(f"{tid}: jira_key {key!r} must be null or a Jira key like PROJ-12")
     return errors
 
 

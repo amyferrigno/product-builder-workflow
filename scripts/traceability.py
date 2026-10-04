@@ -10,7 +10,7 @@ requirement rows and the **REQs** lines of ux/spec.md.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_prd import parse_requirements  # noqa: E402
@@ -21,15 +21,15 @@ NO_SCREEN = "-"
 JIRA_SUFFIX = " (not yet published)"
 
 
-def _tickets_by_req(run: Path) -> Optional[Dict[str, List[str]]]:
-    """REQ id -> ids of the tickets citing it, or None when there is no readable manifest."""
+def _tickets_by_req(run: Path) -> Optional[Dict[str, List[Tuple[str, Optional[str]]]]]:
+    """REQ id -> (ticket id, jira key or None) of the tickets citing it, or None when there is no readable manifest."""
     try:
         data = json.loads((run / "tickets.manifest.json").read_text(encoding="utf-8"))
-        by_req: Dict[str, List[str]] = {}
+        by_req: Dict[str, List[Tuple[str, Optional[str]]]] = {}
         for epic in data["epics"]:
             for child in epic.get("children", []):
                 for req in child.get("req_ids", []):
-                    by_req.setdefault(req, []).append(child["id"])
+                    by_req.setdefault(req, []).append((child["id"], child.get("jira_key") or None))
         return by_req
     except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError, AttributeError):
         return None
@@ -55,8 +55,11 @@ def build_traceability(run_dir) -> str:
         screens = ", ".join(sorted(by_req.get(req_id, []))) or NO_SCREEN
         jira = JIRA_TEXT
         if tickets is not None:
-            ids = ", ".join(sorted(tickets.get(req_id, []))) or NO_SCREEN
-            jira = ids + JIRA_SUFFIX
+            found = sorted(tickets.get(req_id, []))
+            if any(key for _, key in found):
+                jira = ", ".join(key if key else tid + JIRA_SUFFIX for tid, key in found)
+            else:
+                jira = (", ".join(tid for tid, _ in found) or NO_SCREEN) + JIRA_SUFFIX
         lines.append(f"| {req_id} | {priority} | {screens} | {jira} |")
     return "\n".join(lines) + "\n"
 

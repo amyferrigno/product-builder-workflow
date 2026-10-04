@@ -69,7 +69,10 @@ def main() -> None:
         if not text:
             return
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        (run_dir / "checkpoint.md").write_text(f"# Checkpoint {stamp}\n\n{text}\n", encoding="utf-8")
+        target = run_dir / "checkpoint.md"
+        if os.path.islink(target):  # never write through a symlink
+            return
+        target.write_text(f"# Checkpoint {stamp}\n\n{text}\n", encoding="utf-8")
     except Exception:
         pass
 

@@ -48,11 +48,11 @@ No anecdote provider configured. No anecdote records exist for this run.
 
 ### 6c. Evidence gaps
 
-- No data provider: the volume, time and wait figures (M-1, M-2, M-3, M-7) come from a verbal report. How to close: pull the request logs and time records through a data connector (M3) and attach evidence cards.
+- No data provider: the volume, time and wait figures (M-1, M-2, M-3, M-7) come from a verbal report. How to close: pull the request logs and time records through a data connector and attach evidence cards.
 - The 2 hours per request (M-2) has no stated measurement method. How to close: sample timed parsing sessions.
 - Per-type example counts across the 30 constraint types (M-5) were not discussed. How to close: count examples per type in the logs.
 - Data quality of the 1300 labeled examples (M-4) and production access were not discussed. How to close: audit a sample of labels and confirm access with the Data Analyst.
-- Customer reaction to faster confirmation is not evidenced. How to close: capture customer feedback as anecdote records once the anecdote step exists (M4).
+- Customer reaction to faster confirmation is not evidenced. How to close: capture customer feedback as anecdote records once an anecdote provider is configured.
 
 ## 7. Goals and non-goals
 

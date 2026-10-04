@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from test_fixtures_m2 import REPO_ROOT, build_run_dir, load_expected, run_script
+from test_fixtures_prd import REPO_ROOT, build_run_dir, load_expected, run_script
 
 FIXTURES = ["messy-transcript", "contradictory-decisions"]
 

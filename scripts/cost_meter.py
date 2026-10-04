@@ -11,6 +11,7 @@ Cost is an estimate: tokens come from the transcript, prices from pm.config.yaml
 import argparse
 import json
 import math
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -158,6 +159,8 @@ def current_stage(run_dir) -> str:
 def log_entry(run_dir, transcript: str, agent_type: str, agent_id: Optional[str],
               config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Append one cost entry. Returns None when this agent_id (or, without one, this transcript) was already logged."""
+    if os.path.islink(Path(run_dir) / COST_LOG):  # never write through a symlink
+        return None
     existing = read_log(run_dir)
     if agent_id:
         if any(e.get("agent_id") == agent_id for e in existing):
@@ -229,12 +232,13 @@ def check(run_dir, config: Dict[str, Any]):
     info = summarise(run_dir, config)[stage]
     percent = info["percent"]
     budgets = config.get("budgets") if isinstance(config.get("budgets"), dict) else {}
+    uncounted = f" ({info['unparsed']} unparsed entries not counted)" if info["unparsed"] else ""
     if percent is not None:
         if percent >= 100:
-            return 1, f"STOP: {stage} budget exceeded ({info['spent_usd']:.2f} of {info['budget_usd']:.2f})"
+            return 1, f"STOP: {stage} budget exceeded ({info['spent_usd']:.2f} of {info['budget_usd']:.2f}){uncounted}"
         warn_at = budgets.get("warn_at_percent", 80)
         if percent >= warn_at:
-            return 0, f"WARN: {stage} at {math.floor(percent)}% of budget"
+            return 0, f"WARN: {stage} at {math.floor(percent)}% of budget{uncounted}"
     reason = None
     if info["unparsed"]:
         reason = f"{info['unparsed']} unparsed entries"

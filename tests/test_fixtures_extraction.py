@@ -300,7 +300,7 @@ def test_fixture_golden_outputs(fixture_name: str):
             "run_id", "problem_count", "primary_problem_id", "primary_problem_validation_status",
             "parked_problem_count", "ai_proposed", "ai_verdict", "ai_verdict_allowed",
             "must_have_open_questions", "must_have_disagreements", "must_have_reframed_from_solution",
-            "prd",  # M2 expectations, checked in test_fixtures_m2.py
+            "prd",  # PRD expectations, checked in test_fixtures_prd.py
             "decision", "ux"  # M8 expectations, checked by scripts/eval_fixtures.py
         }
 

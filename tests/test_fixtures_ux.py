@@ -1,4 +1,4 @@
-"""Golden UX for the ai-clear-fit fixture (M5)."""
+"""Golden UX for the ai-clear-fit fixture."""
 import json
 import shutil
 import subprocess

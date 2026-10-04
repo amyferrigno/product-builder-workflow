@@ -1,4 +1,4 @@
-"""Golden ticket manifest for the ai-clear-fit fixture (M6)."""
+"""Golden ticket manifest for the ai-clear-fit fixture."""
 import json
 import shutil
 import subprocess

@@ -93,7 +93,7 @@ def approve_prd(
         return
 
     if artifact != "prd":
-        raise ValueError(f"Artifact '{artifact}' not available until a later milestone")
+        raise ValueError(f"unknown artifact '{artifact}': use prd, ux or tickets")
 
     run_path = Path(run_dir)
 

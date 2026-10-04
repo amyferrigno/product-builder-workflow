@@ -49,8 +49,8 @@ No anecdote provider configured. No anecdote records exist for this run.
 
 ### 6c. Evidence gaps
 
-- No data provider: the ticket and log figures (M-1, M-3) come from a verbal report. How to close: re-run the ticket analysis and the log count once a data connector exists (M3), and attach the results as evidence cards.
-- No anecdote provider: interview findings (M-4, M-5) are not captured as records. How to close: capture the interview notes as anecdote records once the anecdote step exists (M4), with customer names removed.
+- No data provider: the ticket and log figures (M-1, M-3) come from a verbal report. How to close: re-run the ticket analysis and the log count once a data provider is configured, and attach the results as evidence cards.
+- No anecdote provider: interview findings (M-4, M-5) are not captured as records. How to close: capture the interview notes as anecdote records once an anecdote provider is configured, with customer names removed.
 - Time spent per meeting is self-reported (M-2). How to close: measure time from first message to confirmed invite from the logs.
 - The link between scheduling frustration and churn (M-6) has no stated size. How to close: ask for the churn analysis figures and cohort.
 - The status of the large deal (R-1) is not documented beyond the quote. How to close: the Support Lead confirms the deal timing and what was promised.
@@ -182,7 +182,7 @@ Workflow decisions:
 
 - PB-1 is the primary problem because it is the only problem in the framing, and no problems are parked.
 - Section 8 targets are proposals because the notes state none.
-- No evidence or anecdote provider exists in this milestone, so evidence comes only from the meeting (6c).
+- No evidence or anecdote provider is configured for this run, so evidence comes only from the meeting (6c).
 
 ## 20. Traceability
 

@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Dict, List
 
@@ -32,6 +33,7 @@ EPIC_PRIORITY = "Medium"  # epics carry no priority in the manifest
 DEFAULT_ISSUE_TYPES = {"Epic": "Epic", "Story": "Story", "Task": "Task", "Spike": "Task"}
 DEFAULT_MIN_INTERVAL = 0.2
 DEFAULT_MAX_RETRIES = 5
+DEFAULT_SEARCH_WAIT = 3
 TWO_KEYS = "going live needs two keys: jira.mode: publish in the config AND the --publish flag"
 
 
@@ -189,12 +191,13 @@ def _blocks_section(ticket: dict, tickets: Dict[str, dict], keys: Dict[str, str]
     return "Blocks:\n" + "\n".join(lines) if lines else ""
 
 
-def publish(run_dir: str, config_path: str, client=None) -> dict:
+def publish(run_dir: str, config_path: str, client=None, sleep=None) -> dict:
     """Publish the approved manifest to Jira. Returns {"created": n, "updated": m}.
 
     Raises ValueError when a precondition fails (nothing was sent) and PublishFailed when a
     Jira call fails midway. `client` is injected by tests; otherwise it is built from the config
-    and the JIRA_EMAIL / JIRA_API_TOKEN environment variables.
+    and the JIRA_EMAIL / JIRA_API_TOKEN environment variables. `sleep` (seconds) is used to wait
+    before the fallback search after a failed create; it defaults to the client's own sleep.
     """
     run_path = Path(run_dir)
     jira = _load_jira_config(config_path)
@@ -224,6 +227,9 @@ def publish(run_dir: str, config_path: str, client=None) -> dict:
     issue_types = dict(DEFAULT_ISSUE_TYPES)
     issue_types.update({str(k): str(v) for k, v in (jira.get("issue_types") or {}).items()})
     default_labels = [str(x) for x in (jira.get("default_labels") or [])]
+    search_wait = jira.get("search_wait_seconds", DEFAULT_SEARCH_WAIT)
+    if isinstance(search_wait, bool) or not isinstance(search_wait, (int, float)) or search_wait < 0:
+        raise ValueError("jira.search_wait_seconds must be a number of seconds, 0 or more")
 
     manifest = _read_json(run_path / MANIFEST_NAME, "the ticket manifest")
     state = _read_json(run_path / STATE_NAME, STATE_NAME)
@@ -245,6 +251,9 @@ def publish(run_dir: str, config_path: str, client=None) -> dict:
             )
         except ValueError as e:
             raise ValueError(f"cannot build the Jira client: {e}")
+
+    if sleep is None:
+        sleep = getattr(client, "_sleep", time.sleep)
 
     entries = build_dryrun(manifest, project_key, default_labels)
     tickets: Dict[str, dict] = {}
@@ -306,7 +315,10 @@ def publish(run_dir: str, config_path: str, client=None) -> dict:
                     except JiraError as e:
                         if e.status != 0 and e.status < 500:
                             raise
-                        # The response may have been lost after Jira created the issue: look first.
+                        # The response may have been lost after Jira created the issue: wait for
+                        # Jira's search index to catch up, then look first.
+                        if search_wait > 0:
+                            sleep(search_wait)
                         key = find_one()
                         if key is None:
                             key = client.create_issue(fields)
@@ -318,7 +330,10 @@ def publish(run_dir: str, config_path: str, client=None) -> dict:
                 f"FAILED at {tid}: {e}\n{done} published before the failure; rerun to resume"
             )
         except PublishFailed as e:
-            raise PublishFailed(f"FAILED at {tid}: {e}\n{done} published before the failure; rerun to resume")
+            raise PublishFailed(
+                f"FAILED at {tid}: {e}\n{done} published before the failure; "
+                "fix the jira_key in the manifest (or the duplicate in Jira), then rerun"
+            )
         write_back(tid, key, action)
         counts[action] += 1
         done += 1

@@ -184,6 +184,12 @@ def test_prd_writer_has_three_modes():
         assert heading in body
 
 
+def test_prd_writer_has_memo_mode():
+    body = (REPO / ".claude" / "agents" / "prd-writer.md").read_text()
+    assert "## Mode 4: No-PRD memo" in body
+    assert "scripts/validate_memo.py" in body
+
+
 def test_pm_approve_disables_model_invocation():
     fm = parse_agent_file(REPO / ".claude" / "skills" / "pm-approve" / "SKILL.md")
     assert fm["name"] == "pm-approve"

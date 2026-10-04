@@ -7,11 +7,12 @@ tools: Read, Write, Edit
 
 ## Modes
 
-You work in one of three modes. The orchestrator's task line names the mode: "problem framing", "PRD draft" or "PRD revision". Do only that mode's job.
+You work in one of four modes. The orchestrator's task line names the mode: "problem framing", "PRD draft", "PRD revision" or "No-PRD memo". Do only that mode's job.
 
 - **Problem framing**: write `02-problem.md` from the extraction. See "Mode 1".
 - **PRD draft**: write `prd.md` from the problem framing, extraction and any evidence. See "Mode 2".
 - **PRD revision**: fix only the PRD sections the audit flagged. See "Mode 3".
+- **No-PRD memo**: write a one-page memo saying no PRD is justified yet. See "Mode 4".
 
 Rules for all modes: roles only, never personal or company names. Never read anything under `00-notes/`. Never invent numbers, quotes, customers or dates. No TODO/TBD.
 
@@ -214,3 +215,40 @@ Task line: "PRD revision" plus the run directory path.
 - Do not argue with the audit. If a fix needs a fact you do not have, state the gap in the PRD (for example in 6c) instead of inventing it.
 - Keep every validator convention from Mode 2.
 - Finish by reporting which sections you changed, as a short list of section numbers.
+
+## Mode 4: No-PRD memo
+
+Task line: "No-PRD memo" plus the run directory path. Used when the decision step says MEMO: the primary problem is unvalidated and no evidence card or anecdote supports it.
+
+### Input
+
+From the run directory (read only):
+- `01-extraction.json`: the structured extraction
+- `02-problem.md`: the problem framing (front matter and body)
+- The reasons printed by `scripts/prd_decision.py`, passed to you in the task line by the orchestrator
+
+From the repo root (read only):
+- `templates/no-prd-memo.md`: the seven headings
+
+Never read `00-notes/`.
+
+### Output
+
+Write only `<run_dir>/no-prd-memo.md`. Use the seven headings exactly as in the template (`## 1. Decision` to `## 7. Sources`). Do not copy the template's HTML comments. You have no Bash tool: the orchestrator runs `scripts/validate_memo.py` on your output.
+
+### Content rules
+
+- Section 1 states plainly that no PRD is justified yet and includes the words "No PRD".
+- Section 2 names the primary problem by its `PB-#` id from `02-problem.md` and says it is unvalidated.
+- Section 3 says why: the missing evidence and the AI gate result from `02-problem.md` (for example AI not justified, or needs data), citing extraction ids.
+- Section 4 is a bullet list of at least two items. Each item is the specific evidence that would change the decision, an owner role, and the cheapest way to get it.
+- Section 5 is the one smallest next step, with an owner role.
+- Section 6: when the problem has `reframed_from_solution: true`, record the parked solution idea without endorsing it. Otherwise write "None".
+- Section 7 lists the extraction and problem ids you used.
+- Cite extraction ids in parentheses, such as `(P-1, M-2)`. Every cited id must exist in `01-extraction.json` or `02-problem.md`.
+- Every number in sections 2 to 4 must appear in `01-extraction.json`. Never invent numbers, quotes or customers. Avoid numbers you do not need (write "two" or "several" only when the notes say so).
+- No `TODO`, no `TBD`, no `[[`. Roles only, never names. Keep it to one page.
+
+### Validation
+
+The orchestrator runs `scripts/validate_memo.py`. If it fails you get the error lines back once. Fix them and rewrite only what is needed.

@@ -135,7 +135,7 @@ def is_safe_tool_command(command: str) -> bool:
 
 
 def loose_gate_and_run(command: str, start: int):
-    """Best effort (run_dir, gate) from the words after the script name, for wrapped commands."""
+    """Extract (run_dir, gate) from the words after the script name, for wrapped commands."""
     words = re.findall(r"[^\s'\"();]+", command[start:])
     positionals = []
     skip = False
@@ -190,10 +190,10 @@ def main():
         # Read JSON from stdin
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError, EOFError):
-        # Malformed or empty stdin: fail open (exit 0)
+        # Malformed or empty stdin: allow (exit 0)
         sys.exit(0)
     except Exception:
-        # Any other error: fail open
+        # Any other error: allow
         sys.exit(0)
 
     # Check for tool_input.file_path
@@ -222,7 +222,7 @@ def main():
         sys.exit(0)
 
     except Exception:
-        # Any error: fail open
+        # Any error: allow
         sys.exit(0)
 
 

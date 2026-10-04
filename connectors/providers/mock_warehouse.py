@@ -4,7 +4,7 @@ Mock warehouse provider (script contract: request JSON on stdin, output JSON on 
 
 Loads fixtures/mock_warehouse/*.csv into in-memory sqlite, then switches the
 connection to read-only (PRAGMA query_only = ON) and installs a sqlite authorizer
-before running any query. THE AUTHORIZER IS THE CONTROL; the text guard is an early warning.
+before running any query. The authorizer is the enforcing layer; the text guard runs before it.
 Authorizer policy (deny by default):
   - allowed actions: SELECT, READ, FUNCTION, RECURSIVE; every other action (insert, update,
     delete, create, drop, alter, attach, pragma, transaction, ...) is denied;

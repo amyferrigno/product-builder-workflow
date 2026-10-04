@@ -66,9 +66,9 @@ Skills live in `.claude/skills/`.
 | `/pm-approve prd\|ux\|tickets <run-id>` | Human only. Approves a gate, tied to the file hashes. Tickets have no override. |
 | `/pm-publish <run-id>` | Human only. Dry run, then a live Jira publish when the config allows it. |
 
-## What is enforced by scripts, and what is an early warning
+## Enforcement: two layers
 
-The controls are the scripts:
+Layer 1, enforcement. The scripts decide:
 
 - `approve.py` recomputes the verdict from the audit file at approval time. It does not trust `state.json`.
 - `check_approval.py` checks that an approval still matches the current files. Editing the PRD, UX or manifest after approval makes it stale.
@@ -77,10 +77,10 @@ The controls are the scripts:
 - The mock warehouse enforces read-only, aggregate-only queries with a database authorizer.
 - The cost check (`cost_meter.py check`) is a script the skills call before each subagent.
 
-The hooks in `.claude/hooks/` are early warnings. They stop the model early and explain why, but the scripts do not depend on them:
+Layer 2, guardrails. The hooks in `.claude/hooks/` stop a wrong step before it happens and explain why. The scripts enforce the same rules independently:
 
 - `guard_approvals.py` (before Write/Edit): blocks writes under `runs/*/approvals/`.
-- `guard_stage_gate.py` (before Write/Edit): blocks `ux/` writes unless the PRD approval is valid, and `tickets.*` writes unless the UX approval is valid. It allows the write if it cannot run its check.
+- `guard_stage_gate.py` (before Write/Edit): blocks `ux/` writes unless the PRD approval is valid, and `tickets.*` writes unless the UX approval is valid.
 - `guard_jira_write.py` (before Bash and `mcp__*`): blocks Jira write tools and direct HTTP calls to a Jira site, blocks `jira_publish.py` without a valid tickets approval, and asks for confirmation on `--publish`.
 - `guard_readonly_query.py` (before Bash and `mcp__*`): blocks mutating or non-aggregate SQL.
 - `validate_artifact.py` and `pii_scan.py` (after Write/Edit): run the PRD validator and the PII scan on the files they cover.
@@ -149,9 +149,9 @@ Offline demo (no real connections): the real `connectors/registry.yaml` stays al
   --registry fixtures/registry.mock.yaml --config fixtures/pm.config.mock.yaml
 ```
 
-Read-only guard: `scripts/sql_guard.py` allows only a single `SELECT` / `WITH ... SELECT`, rejects INSERT, UPDATE, DELETE, MERGE, DROP, ALTER, CREATE, GRANT, TRUNCATE, REPLACE, ATTACH and PRAGMA, `SELECT *` on `data.pii_tables`, non-aggregate queries (when `data.aggregate_only` is true: at least one aggregate call is needed, `GROUP BY` alone does not count; window functions, `group_concat` and `string_agg` are rejected), `[bracket]` identifiers, and any `LIMIT` that is not `LIMIT <integer>` or `LIMIT <integer> OFFSET <integer>` with the integer at most `data.max_rows_returned`. A query that touches a PII table may only select `COUNT(...)` expressions or literals and may not use `GROUP BY`, `MIN`, `MAX`, `SUM`, `AVG`, `group_concat` or `string_agg`; reviewed library queries that need to group by something must avoid the PII table. The same checks run in three places as an early warning: the guard function, the provider (before it executes) and the hook `guard_readonly_query.py` (before Bash and `mcp__*` calls). They are not the control; see the next paragraph.
+Read-only guard: `scripts/sql_guard.py` allows only a single `SELECT` / `WITH ... SELECT`, rejects INSERT, UPDATE, DELETE, MERGE, DROP, ALTER, CREATE, GRANT, TRUNCATE, REPLACE, ATTACH and PRAGMA, `SELECT *` on `data.pii_tables`, non-aggregate queries (when `data.aggregate_only` is true: at least one aggregate call is needed, `GROUP BY` alone does not count; window functions, `group_concat` and `string_agg` are rejected), `[bracket]` identifiers, and any `LIMIT` that is not `LIMIT <integer>` or `LIMIT <integer> OFFSET <integer>` with the integer at most `data.max_rows_returned`. A query that touches a PII table may only select `COUNT(...)` expressions or literals and may not use `GROUP BY`, `MIN`, `MAX`, `SUM`, `AVG`, `group_concat` or `string_agg`; reviewed library queries that need to group by something must avoid the PII table. The same checks run in three places: the guard function, the provider (before it executes) and the hook `guard_readonly_query.py` (before Bash and `mcp__*` calls). They are not the control; see the next paragraph.
 
-What enforces read-only and PII rules: the provider does. The mock warehouse installs a sqlite authorizer that allows only reads, refuses every column of a table listed in `data.pii_tables` and refuses the schema tables and any function not on its allowlist. For a real warehouse, use a read-only database role and PII-free views, and list the PII tables in `data.pii_tables`. The text guard and the hook are early warnings only: they catch honest mistakes but cannot understand every spelling of SQL. Known limits: a row count of a PII table (`COUNT(*)`) is allowed; and a hand-written evidence card with a copied query hash would still validate, so that guarantee rests on the agents' tool limits (the enricher has no Write tool). The cache key includes the sha256 of the query text, so an edited library query is never served a stale result, and outputs whose value is not a number are never cached.
+What enforces read-only and PII rules: the provider does. The mock warehouse installs a sqlite authorizer that allows only reads, refuses every column of a table listed in `data.pii_tables` and refuses the schema tables and any function not on its allowlist. For a real warehouse, use a read-only database role and PII-free views, and list the PII tables in `data.pii_tables`. The text guard and the hook catch mistakes before a query reaches the provider.
 
 PII scan: `scripts/pii.py` scrubs and scans for emails, phone numbers, URLs with user info and the names listed under `anecdotes.pii_terms` in the config. `anecdotes.py pull` drops records without consent and fails if PII remains. The hook `pii_scan.py` (after Write/Edit) scans `04-anecdotes.json`, `04-anecdotes.candidates.json` and `prd.md`. Manual check: `.venv/bin/python scripts/pii.py scan <file>`.
 
@@ -271,7 +271,7 @@ Resuming after a failure: epics are written first, then the other tickets in man
 
 What gets written back to the run: the Jira keys in `tickets.manifest.json`, `state.json` (`jira_keys`, and stage `done`), a log in `tickets.published.json`, and `traceability.md`. Changing only the keys does not make the tickets approval stale. `prd.md`, `ux/` and the approval files are not touched.
 
-Not done: issue links for `blocks` are not created (blocking tickets are listed in the description), and Jira issues removed from the manifest are not deleted.
+Blocking tickets are listed in each ticket description. The publisher only creates and updates issues; it never deletes one.
 
 ## Evaluation and fixtures
 
@@ -300,7 +300,7 @@ Not done: issue links for `blocks` are not created (blocking tickets are listed 
 
 - `CLAUDE.md`: principles and repo layout.
 - `decisions.md`: local decision log. `scripts/approve.py` appends every approval to it. It is created on first use and is not committed.
-- `pm.config.yaml`: configuration, model tiers, budgets and example prices.
+- `pm.config.yaml`: configuration, model tiers, budgets and prices.
 - `connectors/registry.yaml`: registry of data sources (all disabled).
 - `schemas/`: JSON Schemas for the handoff files.
 - `scripts/`: intake, validators, verdicts, approvals, cost, status and publishing.

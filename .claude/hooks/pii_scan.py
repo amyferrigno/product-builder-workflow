@@ -6,7 +6,7 @@ runs/<run>/04-anecdotes.candidates.json and runs/<run>/prd.md using scripts/pii.
 Exit 0 if not applicable or clean, exit 2 (findings on stderr) if PII is found.
 Standard library only: scripts/pii.py reads pm.config.yaml with PyYAML when available,
 otherwise with a small tolerant reader (defaults: no terms, allow_company_names false).
-Never prints a traceback: any unexpected error fails open (exit 0).
+Never prints a traceback: any unexpected error exits 0.
 """
 
 import os

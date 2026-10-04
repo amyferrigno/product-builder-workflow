@@ -55,7 +55,7 @@ def main():
     try:
         data = json.load(sys.stdin)
     except Exception:
-        # Malformed or empty stdin: fail open (exit 0)
+        # Malformed or empty stdin: allow (exit 0)
         sys.exit(0)
 
     try:
@@ -89,7 +89,7 @@ def main():
     except SystemExit:
         raise
     except Exception:
-        # Any error: fail open
+        # Any error: allow
         sys.exit(0)
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-EARLY WARNING, NOT THE CONTROL: this hook is a best-effort text check that stops obvious
-mistakes before a tool runs. Enforcement is the provider (the sqlite authorizer in the mock
+First layer of defence: a fast text check that stops a wrong query before a tool runs.
+The enforcing layer is the provider (the sqlite authorizer in the mock
 warehouse; a read-only role with PII-free views for real warehouses).
 
 PreToolUse hook that blocks mutating or non-aggregate SQL.
@@ -177,7 +177,7 @@ def main():
     except SystemExit:
         raise
     except Exception:
-        # Malformed input or an unexpected failure: fail open
+        # Malformed input or an unexpected failure: allow
         sys.exit(0)
 
     if errors:

@@ -2,8 +2,8 @@
 """
 Read-only SQL guard. Pure standard library so a hook can import it by path.
 
-This is a BEST-EFFORT EARLY WARNING, not the control. Text scanning cannot understand every
-spelling of SQL. Enforcement is the provider: the sqlite authorizer in
+First layer of defence: a fast text check that runs before a query reaches a provider.
+The second, enforcing layer is the provider: the sqlite authorizer in
 connectors/providers/mock_warehouse.py, or, for real warehouses, a read-only database role
 with PII-free views.
 

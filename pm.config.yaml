@@ -17,7 +17,7 @@ budgets:
   stage2: 2.00
   stage3: 1.00
   warn_at_percent: 80
-# Example prices in USD per million tokens. Edit to your contract prices.
+# Prices in USD per million tokens. Set to your contract prices.
 pricing:
   small:
     input_per_mtok: 1

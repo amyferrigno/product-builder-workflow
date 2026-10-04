@@ -90,10 +90,10 @@ def main():
         # Read JSON from stdin
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError, EOFError):
-        # Malformed or empty stdin: fail open (exit 0)
+        # Malformed or empty stdin: allow (exit 0)
         sys.exit(0)
     except Exception:
-        # Any other error: fail open
+        # Any other error: allow
         sys.exit(0)
 
     # Check for tool_input.file_path
@@ -172,14 +172,14 @@ def main():
             sys.exit(0)
 
         except subprocess.TimeoutExpired:
-            # Timeout: fail open
+            # Timeout: allow
             sys.exit(0)
         except Exception:
-            # Any other error: fail open
+            # Any other error: allow
             sys.exit(0)
 
     except Exception:
-        # Any error: fail open
+        # Any error: allow
         sys.exit(0)
 
 

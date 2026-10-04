@@ -110,7 +110,7 @@ def test_unparseable_transcript_logs_null_values(tmp_path, name):
 
 def test_missing_pricing_logs_tokens_without_estimate(tmp_path):
     config = (REPO_ROOT / "pm.config.yaml").read_text(encoding="utf-8")
-    config = re.sub(r"# Example prices.*?(?=^audit:)", "", config, flags=re.S | re.M)
+    config = re.sub(r"# Prices in USD.*?(?=^audit:)", "", config, flags=re.S | re.M)
     assert "pricing" not in config
     project = make_project(tmp_path, config_text=config)
     run = make_run(project)
@@ -245,8 +245,8 @@ def test_check_ignores_unparsed_entries_of_other_stages(tmp_path):
 
 def test_check_warns_when_config_is_missing_or_blocks_absent(tmp_path):
     config = (REPO_ROOT / "pm.config.yaml").read_text(encoding="utf-8")
-    no_budget = re.sub(r"^budgets:.*?(?=^# Example prices)", "", config, flags=re.S | re.M)
-    no_pricing = re.sub(r"# Example prices.*?(?=^audit:)", "", config, flags=re.S | re.M)
+    no_budget = re.sub(r"^budgets:.*?(?=^# Prices in USD)", "", config, flags=re.S | re.M)
+    no_pricing = re.sub(r"# Prices in USD.*?(?=^audit:)", "", config, flags=re.S | re.M)
     assert "budgets" not in no_budget and "pricing" not in no_pricing
     for text, reason in ((no_budget, "no budget"), (no_pricing, "no price table"), ("a: [unclosed", "no price table")):
         root = tmp_path / f"{reason.replace(' ', '_')}-{len(text)}"

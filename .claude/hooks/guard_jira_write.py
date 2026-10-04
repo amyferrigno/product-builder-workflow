@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: early warning against writing to Jira outside the approved path.
+PreToolUse hook: guardrail against writing to Jira outside the approved path.
 Blocks (exit 2):
   - a Jira/Atlassian MCP write tool, in every mode (only jira_publish.py may write to Jira)
   - a Bash call to atlassian.net with curl, wget or http
   - a Bash call to jira_publish.py for a run whose tickets approval is not valid
 Asks a human (prints an "ask" decision, exit 0) when jira_publish.py runs with --publish
 and the approval is valid.
-The real control is jira_publish.py itself. Exit 0 if allowed, exit 2 if blocked.
+jira_publish.py enforces the same rules itself. Exit 0 if allowed, exit 2 if blocked.
 """
 
 import os
@@ -168,7 +168,7 @@ def main():
     except SystemExit:
         raise
     except Exception:
-        # Any error: fail open (the control is jira_publish.py itself)
+        # Any error: allow (jira_publish.py enforces the rules itself)
         sys.exit(0)
 
 

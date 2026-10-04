@@ -77,7 +77,7 @@ def test_guard_approvals_allows_prd_path():
 
 
 def test_guard_approvals_empty_stdin():
-    """Test that guard_approvals fails open for empty stdin."""
+    """Test that guard_approvals allows on empty stdin."""
     hook_script = ".claude/hooks/guard_approvals.py"
 
     result = subprocess.run(
@@ -88,12 +88,12 @@ def test_guard_approvals_empty_stdin():
         cwd=Path(__file__).parent.parent
     )
 
-    assert result.returncode == 0, "Should fail open for empty stdin"
+    assert result.returncode == 0, "Should allow on empty stdin"
     assert "Traceback" not in result.stderr
 
 
 def test_guard_approvals_invalid_json():
-    """Test that guard_approvals fails open for invalid JSON."""
+    """Test that guard_approvals allows on invalid JSON."""
     hook_script = ".claude/hooks/guard_approvals.py"
 
     result = subprocess.run(
@@ -104,7 +104,7 @@ def test_guard_approvals_invalid_json():
         cwd=Path(__file__).parent.parent
     )
 
-    assert result.returncode == 0, "Should fail open for invalid JSON"
+    assert result.returncode == 0, "Should allow on invalid JSON"
     assert "Traceback" not in result.stderr
 
 
@@ -292,7 +292,7 @@ def test_hook_files_exist():
 
 
 def test_validate_artifact_empty_stdin():
-    """Test that validate_artifact fails open for empty stdin."""
+    """Test that validate_artifact allows on empty stdin."""
     hook_script = ".claude/hooks/validate_artifact.py"
 
     result = subprocess.run(
@@ -303,12 +303,12 @@ def test_validate_artifact_empty_stdin():
         cwd=Path(__file__).parent.parent
     )
 
-    assert result.returncode == 0, "Should fail open for empty stdin"
+    assert result.returncode == 0, "Should allow on empty stdin"
     assert "Traceback" not in result.stderr
 
 
 def test_validate_artifact_invalid_json():
-    """Test that validate_artifact fails open for invalid JSON."""
+    """Test that validate_artifact allows on invalid JSON."""
     hook_script = ".claude/hooks/validate_artifact.py"
 
     result = subprocess.run(
@@ -319,7 +319,7 @@ def test_validate_artifact_invalid_json():
         cwd=Path(__file__).parent.parent
     )
 
-    assert result.returncode == 0, "Should fail open for invalid JSON"
+    assert result.returncode == 0, "Should allow on invalid JSON"
     assert "Traceback" not in result.stderr
 
 

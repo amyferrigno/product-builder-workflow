@@ -179,6 +179,16 @@ def _live_fields(entry: dict, issue_types: Dict[str, str], logical_type: str, to
     return fields
 
 
+def _blocks_section(ticket: dict, tickets: Dict[str, dict], keys: Dict[str, str]) -> str:
+    """Plain 'Blocks' section for the live description; empty when the ticket blocks nothing."""
+    lines = []
+    for bid in ticket.get("blocks") or []:
+        other = tickets.get(bid, {})
+        ref = f"{bid} ({keys[bid]})" if bid in keys else str(bid)
+        lines.append(f"- {ref}: {other.get('summary', '')}")
+    return "Blocks:\n" + "\n".join(lines) if lines else ""
+
+
 def publish(run_dir: str, config_path: str, client=None) -> dict:
     """Publish the approved manifest to Jira. Returns {"created": n, "updated": m}.
 
@@ -204,6 +214,8 @@ def publish(run_dir: str, config_path: str, client=None) -> dict:
         raise ValueError("jira.site is missing or a placeholder; set the real Jira site in the config")
     if not project_key or _is_placeholder(project_key):
         raise ValueError("jira.project_key is missing or a placeholder; set the real project key in the config")
+    if not site.startswith("https://"):
+        raise ValueError("jira.site must start with https://")
     email = os.environ.get("JIRA_EMAIL", "")
     token = os.environ.get("JIRA_API_TOKEN", "")
     if client is None and not (email and token):
@@ -259,25 +271,45 @@ def publish(run_dir: str, config_path: str, client=None) -> dict:
     done = 0
     for entry in entries:
         tid = entry["ticket_id"]
-        fields = _live_fields(entry, issue_types, logical[tid], to_adf)
+        fields = _live_fields(entry, issue_types, logical[tid], lambda text: text)
+        blocks = _blocks_section(tickets[tid], tickets, keys)
+        if blocks:
+            fields["description"] = fields["description"] + "\n\n" + blocks
+        fields["description"] = to_adf(fields["description"])
         parent_id = entry["parent_ticket_id"]
         if parent_id:
             fields["parent"] = {"key": keys[parent_id]}
         try:
             key = keys.get(tid)
+            label = entry["idempotency_label"]
             action = "updated"
-            if key is None:
-                label = entry["idempotency_label"]
+
+            def find_one():
                 found = client.search_by_label(project_key, label)
                 if len(found) > 1:
                     raise PublishFailed(
                         f"duplicate idempotency label {label}: " + ", ".join(f["key"] for f in found)
                     )
-                if found:
-                    key = found[0]["key"]
-                else:
-                    key = client.create_issue(fields)
+                return found[0]["key"] if found else None
+
+            if key is not None:
+                if key.rsplit("-", 1)[0] != project_key:
+                    raise PublishFailed(f"jira_key {key} for {tid} is not in project {project_key}")
+                if find_one() != key:
+                    raise PublishFailed(f"jira_key {key} for {tid} does not carry label {label}")
+            else:
+                key = find_one()
+                if key is None:
                     action = "created"
+                    try:
+                        key = client.create_issue(fields)
+                    except JiraError as e:
+                        if e.status != 0 and e.status < 500:
+                            raise
+                        # The response may have been lost after Jira created the issue: look first.
+                        key = find_one()
+                        if key is None:
+                            key = client.create_issue(fields)
             if action == "updated":
                 update = {k: v for k, v in fields.items() if k not in ("project", "issuetype")}
                 client.update_issue(key, update)
@@ -317,6 +349,10 @@ def main() -> None:
             publish(args.run_dir, args.config)
         except ValueError as e:
             print(str(e), file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:  # a transport bug must not print a traceback
+            text = " ".join(f"{type(e).__name__}: {e}".split())
+            print(f"FAILED unexpected error: {text}", file=sys.stderr)
             sys.exit(1)
         return
     try:

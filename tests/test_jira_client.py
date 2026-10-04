@@ -144,18 +144,28 @@ def test_retry_after_is_capped_at_30():
     assert delays == [30]
 
 
-def test_500_retried_with_backoff_sequence():
+def test_500_on_search_retried_with_backoff_sequence():
     client, fake, delays = make_client()
     fake.fail_next(500, times=3)
-    assert client.create_issue(issue_fields()) == "DEMO-1"
+    assert client.search_by_label("DEMO", "a") == []
     assert delays == [1, 2, 4]
-    assert fake.count("POST", "/rest/api/3/issue") == 4
+    assert fake.count("POST", "/rest/api/3/search/jql") == 4
+
+
+def test_500_on_create_is_not_retried():
+    client, fake, delays = make_client()
+    fake.fail_next(500)
+    with pytest.raises(JiraError) as excinfo:
+        client.create_issue(issue_fields())
+    assert excinfo.value.status == 500
+    assert fake.count("POST", "/rest/api/3/issue") == 1
+    assert delays == []
 
 
 def test_backoff_is_capped_at_30():
     client, fake, delays = make_client(max_retries=8)
     fake.fail_next(503, times=8)
-    client.create_issue(issue_fields())
+    client.search_by_label("DEMO", "a")
     assert delays == [1, 2, 4, 8, 16, 30, 30, 30]
 
 
@@ -163,7 +173,7 @@ def test_retries_are_bounded_then_jira_error():
     client, fake, delays = make_client(max_retries=3)
     fake.fail_next(500, times=10)
     with pytest.raises(JiraError) as excinfo:
-        client.create_issue(issue_fields())
+        client.search_by_label("DEMO", "a")
     assert excinfo.value.status == 500
     assert len(fake.requests) == 4
     assert delays == [1, 2, 4]
@@ -181,10 +191,10 @@ def test_400_raises_at_once_without_retry():
 def test_fail_on_request_targets_the_nth_request():
     client, fake, delays = make_client()
     fake.fail_on_request(2, 500)
-    client.create_issue(issue_fields("one"))
-    client.create_issue(issue_fields("two"))
+    client.search_by_label("DEMO", "a")
+    client.search_by_label("DEMO", "b")
     assert delays == [1]
-    assert len(fake.created_keys()) == 2
+    assert len(fake.requests) == 3
 
 
 def test_network_errors_retried_then_status_zero():
@@ -198,10 +208,25 @@ def test_network_errors_retried_then_status_zero():
     client = JiraClient(SITE, EMAIL, TOKEN, transport=transport, sleep=delays.append,
                         min_interval=0, max_retries=2)
     with pytest.raises(JiraError) as excinfo:
-        client.create_issue(issue_fields())
+        client.search_by_label("DEMO", "a")
     assert excinfo.value.status == 0
     assert len(calls) == 3
     assert delays == [1, 2]
+
+
+def test_network_error_on_create_is_not_retried():
+    calls = []
+
+    def transport(method, url, headers, body, timeout):
+        calls.append(1)
+        raise TimeoutError("timed out")
+
+    client = JiraClient(SITE, EMAIL, TOKEN, transport=transport, sleep=lambda s: None, min_interval=0)
+    with pytest.raises(JiraError) as excinfo:
+        client.create_issue(issue_fields())
+    assert excinfo.value.status == 0
+    assert "network error" in str(excinfo.value)
+    assert len(calls) == 1
 
 
 def test_network_error_then_success():
@@ -211,10 +236,10 @@ def test_network_error_then_success():
         state["n"] += 1
         if state["n"] == 1:
             raise OSError("connection reset")
-        return 201, {}, json.dumps({"key": "DEMO-7"}).encode()
+        return 200, {}, json.dumps({"issues": []}).encode()
 
     client = JiraClient(SITE, EMAIL, TOKEN, transport=transport, sleep=lambda s: None, min_interval=0)
-    assert client.create_issue(issue_fields()) == "DEMO-7"
+    assert client.search_by_label("DEMO", "a") == []
 
 
 # Minimum interval
@@ -241,14 +266,30 @@ def test_error_text_never_contains_token_or_email():
     client, fake, _ = make_client(max_retries=1)
     fake.fail_next(500, times=5)
     with pytest.raises(JiraError) as excinfo:
-        client.create_issue(issue_fields())
+        client.search_by_label("DEMO", "a")
     error = excinfo.value
     for text in (str(error), repr(error), error.message):
         assert TOKEN not in text
         assert EMAIL not in text
         assert "Authorization" not in text
         assert "Basic" not in text
-    assert "POST" in str(error) and "/rest/api/3/issue" in str(error) and "500" in str(error)
+    assert "POST" in str(error) and "/rest/api/3/search/jql" in str(error) and "500" in str(error)
+
+
+def test_error_body_echoing_credentials_is_redacted():
+    credential = base64.b64encode("{}:{}".format(EMAIL, TOKEN).encode()).decode()
+
+    def transport(method, url, headers, body, timeout):
+        echo = "Authorization: {} user {} token {}".format(headers["Authorization"], EMAIL, TOKEN)
+        return 400, {}, echo.encode()
+
+    client = JiraClient(SITE, EMAIL, TOKEN, transport=transport, sleep=lambda s: None, min_interval=0)
+    with pytest.raises(JiraError) as excinfo:
+        client.create_issue(issue_fields())
+    error = excinfo.value
+    assert "[redacted]" in str(error)
+    for text in (str(error), repr(error)):
+        assert TOKEN not in text and EMAIL not in text and credential not in text
 
 
 def test_error_body_is_truncated_to_300_chars():

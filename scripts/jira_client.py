@@ -63,7 +63,9 @@ class JiraClient:
             raise ValueError("Jira site must be an https:// URL")
         self.site = site.rstrip("/")
         credentials = "{}:{}".format(email, token).encode("utf-8")
-        self._auth = "Basic " + base64.b64encode(credentials).decode("ascii")
+        encoded = base64.b64encode(credentials).decode("ascii")
+        self._auth = "Basic " + encoded
+        self._secrets = sorted({str(x) for x in (encoded, token, email) if x}, key=len, reverse=True)
         self._transport = transport if transport is not None else default_transport
         self._sleep = sleep
         self.min_interval = min_interval
@@ -88,7 +90,7 @@ class JiraClient:
                 pass
         return delay
 
-    def _request(self, method, path, payload=None):
+    def _request(self, method, path, payload=None, retry_server_errors=True):
         url = self.site + path
         headers = {
             "Authorization": self._auth,
@@ -110,17 +112,19 @@ class JiraClient:
 
             if failure is None and 200 <= status < 300:
                 return resp_body
-            retryable = failure is not None or status == 429 or status >= 500
+            retryable = status == 429 or (retry_server_errors and (failure is not None or status >= 500))
             if not retryable:
-                raise JiraError(status, self._message(method, path, status, resp_body))
+                raise JiraError(status, self._message(method, path, status, resp_body, failure))
             if attempt >= self.max_retries:
                 raise JiraError(status, self._message(method, path, status, resp_body, failure))
             self._sleep(self._retry_delay(attempt, resp_headers))
             attempt += 1
 
-    @staticmethod
-    def _message(method, path, status, body, failure=None):
-        text = body.decode("utf-8", errors="replace")[:MAX_BODY_CHARS] if body else ""
+    def _message(self, method, path, status, body, failure=None):
+        text = body.decode("utf-8", errors="replace") if body else ""
+        for secret in self._secrets:
+            text = text.replace(secret, "[redacted]")
+        text = text[:MAX_BODY_CHARS]
         if failure:
             text = "network error: " + failure
         return "Jira {} {} failed with status {}: {}".format(method, path, status, text)
@@ -143,7 +147,8 @@ class JiraClient:
         return [{"key": issue["key"], "id": issue["id"]} for issue in issues]
 
     def create_issue(self, fields):
-        raw = self._request("POST", "/rest/api/3/issue", {"fields": fields})
+        # A lost create response may hide a created issue, so only 429 is retried here.
+        raw = self._request("POST", "/rest/api/3/issue", {"fields": fields}, retry_server_errors=False)
         key = self._json(raw).get("key")
         if not key:
             raise JiraError(0, "Jira POST /rest/api/3/issue returned no issue key")

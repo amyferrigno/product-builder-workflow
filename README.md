@@ -119,7 +119,7 @@ Gate B: the human runs `/pm-approve ux <run-id>`. It writes `traceability.md` (R
 
 `/pm-tickets <run-id>` turns an approved PRD and approved UX into `runs/<run-id>/tickets.manifest.json` (agent `ticket-architect`): Epics, Stories, Tasks and Spikes, never Sub-tasks and never story points.
 
-What the Definition of Ready checks (`scripts/validate_tickets.py`, no model involved): schema, ids and labels, summary format (`[Area] Verb object`, at most 80 characters), no TODO or TBD, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events taken from the spec for user-facing Stories, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle and every `jira_key` null.
+What the Definition of Ready checks (`scripts/validate_tickets.py`, no model involved): schema, ids and labels, summary format (`[Area] Verb object`, at most 80 characters), no TODO or TBD, at least 3 Given/When/Then criteria per Story, REQ and screen links that exist, analytics events taken from the spec for user-facing Stories, AI quality criteria when the PRD has an AI addendum, one instrumentation Task per feature Epic, one Measure and Quality Epic, every Must requirement covered, no `blocks` cycle and every `jira_key` null before publishing (after a live publish they hold the Jira keys).
 
 The preview: `scripts/preview_tickets.py` writes `tickets.preview.md` with totals, the ticket tree and the Must coverage table.
 

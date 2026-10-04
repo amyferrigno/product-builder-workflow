@@ -416,3 +416,169 @@ def test_publish_mode_without_flag_exits_one(tmp_path, monkeypatch, capsys):
     assert "two keys" in err and "--publish" in err
     assert not (run / "tickets.dryrun.json").exists()
     assert not (run / "tickets.published.json").exists()
+
+
+# --- jira_key safety ---
+
+def set_key(run, ticket_id, key):
+    manifest = manifest_of(run)
+    for ticket in all_tickets(manifest):
+        if ticket["id"] == ticket_id:
+            ticket["jira_key"] = key
+    (run / "tickets.manifest.json").write_text(json.dumps(manifest))
+
+
+def puts_of(fake):
+    return [r for r in fake.requests if r.method == "PUT"]
+
+
+def test_hand_edited_key_of_unrelated_issue_is_not_overwritten(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    original = {"summary": "someone else's issue", "labels": ["unrelated"]}
+    other = fake.seed_issue(dict(original))
+    set_key(run, "EPIC-01", other)
+    assert approval_status(str(run), "tickets") == (True, "approved")
+    with pytest.raises(jira_publish.PublishFailed) as exc:
+        jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
+    slug = manifest_of(run)["prd_slug"]
+    assert f"jira_key {other} for EPIC-01 does not carry label ext-{slug}-epic-01" in str(exc.value)
+    assert len(puts_of(fake)) == 0
+    assert fake.issues[other] == original
+
+
+def test_hand_edited_key_in_another_project_is_refused(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    set_key(run, "EPIC-01", "OTHER-5")
+    with pytest.raises(jira_publish.PublishFailed) as exc:
+        jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
+    assert "jira_key OTHER-5 for EPIC-01 is not in project DEMO" in str(exc.value)
+    assert len(puts_of(fake)) == 0
+    assert len(fake.requests) == 0
+
+
+def test_rerun_with_keys_from_previous_publish_still_updates_all(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    config = write_config(tmp_path)
+    jira_publish.publish(str(run), str(config), client=make_client(fake))
+    total = len(all_tickets(manifest_of(run)))
+    counts = jira_publish.publish(str(run), str(config), client=make_client(fake))
+    assert counts == {"created": 0, "updated": total}
+    assert len(puts_of(fake)) == total
+
+
+# --- blocks in the live description ---
+
+def adf_text(adf):
+    out = []
+
+    def walk(node):
+        if node.get("type") == "text":
+            out.append(node["text"])
+        for child in node.get("content", []):
+            walk(child)
+
+    walk(adf)
+    return "\n".join(out)
+
+
+def test_blocks_are_listed_in_live_description_only(tmp_path):
+    run = make_tickets_run(tmp_path)
+    write_state(run)
+    manifest = manifest_of(run)
+    tickets = {t["id"]: t for t in all_tickets(manifest)}
+    tickets["T-001"]["blocks"] = ["T-002"]
+    (run / "tickets.manifest.json").write_text(json.dumps(manifest))
+    result = subprocess.run(
+        [sys.executable, "scripts/approve.py", str(run), "tickets",
+         "--decisions-file", str(run / "decisions.test.md")],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    )
+    assert result.returncode == 0, result.stderr
+    summary = tickets["T-002"]["summary"]
+
+    entries = jira_publish.build_dryrun(manifest, "DEMO", ["agentic-pm"])
+    dry = next(e for e in entries if e["ticket_id"] == "T-001")
+    assert "Blocks" not in dry["payload"]["fields"]["description"]
+
+    fake = FakeJira()
+    config = write_config(tmp_path)
+    jira_publish.publish(str(run), str(config), client=make_client(fake))
+    first = next(p for p in issue_posts(fake) if p.body["fields"]["summary"] == tickets["T-001"]["summary"])
+    text = adf_text(first.body["fields"]["description"])
+    assert "Blocks:" in text and f"T-002: {summary}" in text  # T-002 has no key yet
+
+    jira_publish.publish(str(run), str(config), client=make_client(fake))
+    key = manifest_of(run)["epics"][0]["children"][1]["jira_key"]
+    put = next(r for r in puts_of(fake) if r.body["fields"]["summary"] == tickets["T-001"]["summary"])
+    assert f"T-002 ({key}): {summary}" in adf_text(put.body["fields"]["description"])
+    other = next(p for p in issue_posts(fake) if p.body["fields"]["summary"] == summary)
+    assert "Blocks" not in adf_text(other.body["fields"]["description"])
+
+
+# --- lost create response ---
+
+def test_lost_create_response_is_adopted_not_duplicated(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.lose_response_on_create()
+    counts = jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
+    manifest = manifest_of(run)
+    total = len(all_tickets(manifest))
+    assert counts == {"created": total, "updated": 0}
+    assert len(fake.issues) == total
+    label = f"ext-{manifest['prd_slug']}-epic-01"
+    assert [k for k, f in fake.issues.items() if label in f["labels"]] == [manifest["epics"][0]["jira_key"]]
+    assert json.loads((run / "tickets.published.json").read_text())[0]["action"] == "created"
+
+
+def test_plain_500_on_create_is_retried_once(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.fail_on_request(2, 500)  # search is request 1, the first create is request 2
+    counts = jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
+    total = len(all_tickets(manifest_of(run)))
+    assert counts == {"created": total, "updated": 0}
+    assert len(fake.issues) == total
+    assert len(issue_posts(fake)) == total + 1
+
+
+def test_two_500s_on_create_stop_the_publish(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    fake.fail_on_request(2, 500)
+    fake.fail_on_request(4, 500)  # search (3) then the retried create (4)
+    with pytest.raises(jira_publish.PublishFailed) as exc:
+        jira_publish.publish(str(run), str(write_config(tmp_path)), client=make_client(fake))
+    assert "FAILED at EPIC-01" in str(exc.value) and "0 published before the failure" in str(exc.value)
+    assert len(fake.issues) == 0
+
+
+# --- small items ---
+
+def test_non_https_site_refused_even_with_injected_client(tmp_path):
+    run = approved_run(tmp_path)
+    fake = FakeJira()
+    config = write_config(tmp_path, site="http://example.atlassian.net")
+    with pytest.raises(ValueError, match="https://"):
+        jira_publish.publish(str(run), str(config), client=make_client(fake))
+    assert len(fake.requests) == 0
+
+
+def test_unexpected_transport_exception_is_one_line_failure(tmp_path, monkeypatch, env, capsys):
+    run = approved_run(tmp_path)
+    config = write_config(tmp_path)
+
+    def broken(method, url, headers, body, timeout):
+        raise RuntimeError("boom\nsecond line")
+
+    monkeypatch.setattr(jira_client, "default_transport", broken)
+    monkeypatch.setattr(sys, "argv", ["jira_publish.py", str(run), "--config", str(config), "--publish"])
+    with pytest.raises(SystemExit) as exc:
+        jira_publish.main()
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert err.startswith("FAILED") and len(err.strip().splitlines()) == 1
+    assert "Traceback" not in err and TOKEN not in err

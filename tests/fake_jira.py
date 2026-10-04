@@ -30,6 +30,7 @@ class FakeJira:
         self._created = []
         self._fail_next = []
         self._fail_on = {}
+        self._lose_create = 0
 
     # Failure injection
 
@@ -40,6 +41,10 @@ class FakeJira:
     def fail_on_request(self, n, status, headers=None):
         """Fail the n-th request received (1-based, counting every request)."""
         self._fail_on[n] = (status, headers)
+
+    def lose_response_on_create(self, times=1):
+        """The next create(s) store the issue but answer 500 (response lost)."""
+        self._lose_create += times
 
     # Seeding and helpers
 
@@ -120,6 +125,9 @@ class FakeJira:
             return _response(400, {"errors": {"parent": "unknown parent " + str(parent)}})
         key = self.seed_issue(fields)
         self._created.append(key)
+        if self._lose_create:
+            self._lose_create -= 1
+            return _response(500, {"errorMessages": ["response lost"]})
         return _response(201, {
             "id": str(10000 + self._counter),
             "key": key,

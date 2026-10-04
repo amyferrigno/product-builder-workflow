@@ -9,3 +9,4 @@ must_have_open_questions: true
 must_have_disagreements: true
 prd:
   verdict: "FAIL"
+decision: "PRD"

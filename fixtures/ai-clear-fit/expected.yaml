@@ -9,3 +9,6 @@ must_have_open_questions: false
 must_have_disagreements: false
 prd:
   verdict: "PASS_WITH_RISK"
+decision: "PRD"
+ux:
+  verdict: "PASS"

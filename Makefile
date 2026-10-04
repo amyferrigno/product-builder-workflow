@@ -1,4 +1,4 @@
-.PHONY: setup test
+.PHONY: setup test eval
 
 setup:
 	python3 -m venv .venv
@@ -7,3 +7,6 @@ setup:
 
 test:
 	./.venv/bin/pytest tests/ -v
+
+eval:
+	./.venv/bin/python scripts/eval_fixtures.py
